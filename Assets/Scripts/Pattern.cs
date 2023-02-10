@@ -2,7 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Pattern 
+[CreateAssetMenu(menuName = "Pattern")]
+public class Pattern : ScriptableObject 
 {
     public enum AttackType {
         white,
@@ -10,7 +11,7 @@ public class Pattern
         blue
     }
     public AttackType attacktype;
-    public float chaseDistance; // 패턴을 시작하는 거리
+    public float startDistance; // 패턴을 시작하는 거리
     public float stanbyTime; // 패턴 대기 시간
     public float attackDistance; // 공격 범위
     public float maxDashDistance; // 최대 돌진 사거리

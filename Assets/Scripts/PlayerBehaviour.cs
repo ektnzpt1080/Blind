@@ -19,7 +19,6 @@ public class PlayerBehaviour : MonoBehaviour
         Special
     }
 
-    [SerializeField] float a;
     //건드릴 것
     [SerializeField] float playerMoveSpeed; //Player가 움직이는 속도
     [SerializeField] float playerRollSpeed; //구르기 속도
@@ -33,8 +32,17 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float parryDurationMax = 30 / 60f; //Player 패링 시간 Max
     [SerializeField] float parryDurationMin = 7 / 60f; //Player 패링 시간 Min
     [SerializeField] int playerHealth = 100; //Player 체력
-    [SerializeField] float knuckbackSmall = 0.5f; // 넉백 거리 (작음)
-    [SerializeField] float knuckbackBig = 1.0f; // 넉백 거리 (큼)
+    [SerializeField] float knuckbackSmall = 0.2f; // 넉백 거리 (작음, 가드, 패리 성공)
+    [SerializeField] float knuckbackBig = 1.0f; // 넉백 거리 (큼, 데미지 당함)
+    [SerializeField] float attackDashDistance; // 공격 대시 사거리
+
+    Collider2D playerCollider;
+    [SerializeField] GameObject attackRange;
+    Collider2D attackCollider;
+
+    [SerializeField] Boss1Behaviour boss;
+
+    public GameObject parryEffect; // parry 했을 때 이펙트
 
 
     //건드리면 안됨
@@ -45,6 +53,7 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float guardTime; //Player가 가드하고 있는 시간
     [SerializeField] float playerStamina; //Player 스태미나
     [SerializeField] PlayerState playerstate; //PlayerState
+
 
     Camera mainCamera;
     SpriteRenderer sr;
@@ -61,6 +70,7 @@ public class PlayerBehaviour : MonoBehaviour
         lastRollTime = Time.time;
         lastStaminaSpendTime = Time.time;
         playerStamina = playerStaminaMax;
+        attackCollider = attackRange.GetComponent<Collider2D>();
     }
 
     // Update is called once per frame
@@ -85,7 +95,10 @@ public class PlayerBehaviour : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (AttackAvailiableState()) Debug.Log("attack");
+            if (AttackAvailiableState()) {
+                Debug.Log("attack");
+                Attack();
+            }
         }
         else if (Input.GetMouseButtonDown(1))
         {
@@ -177,16 +190,21 @@ public class PlayerBehaviour : MonoBehaviour
     }
 
     public void Attacked( Vector3 attackCenter, int damage, bool isParryable ){
-        Vector2 mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-        Vector2 attackVec =  attackCenter - transform.position;
+        Vector3 mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+        Vector3 attackVec =  attackCenter - transform.position;
         float angle = Vector2.Angle(mouseVec, attackVec);
         if(playerstate == PlayerState.Parrying && isParryable && angle < 75){
+            Vector3 v3 = attackVec;
             Debug.Log("Attack Parried");
+            Instantiate(parryEffect, transform.position + v3.normalized * 0.5f , Quaternion.identity);
             AfterParry();
+            GuardKnuckback(-attackVec);
             //TODO 패리 상황
         }
         else if(playerstate == PlayerState.Guard && isParryable && angle < 75){
             DamagedSmall(damage / 3, - attackVec.normalized);
+            GuardKnuckback(-attackVec);
+
             //TODO 가드 상황
         }
         else{
@@ -198,15 +216,13 @@ public class PlayerBehaviour : MonoBehaviour
     public void DamagedBig(int damage, Vector3 vec){
         playerstate = PlayerState.Damaged;
         playerHealth -= damage;
-        
         if(playerHealth <= 0 ){
             // TODO 게임오버 처리
             return;
         }
-        transform.DOMove(transform.position + vec * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
+        transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
             playerstate = PlayerState.Idle;
         });
-
 
     }
 
@@ -215,6 +231,36 @@ public class PlayerBehaviour : MonoBehaviour
         playerHealth -= damage;
     }
 
+    public void GuardKnuckback(Vector3 vec, float knuckback = -1f){
+        float f = knuckback;
+        if (f < 0) {
+            f = knuckbackSmall;
+        }
+        transform.DOMove(transform.position + vec * f, 0.1f).SetEase(Ease.OutCubic);
+    }
+
+    public void Attack(){
+        
+        //애니메이션 넣기
+        playerstate = PlayerState.Attack;
+        Vector2 mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+        float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
+        attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
+        ContactFilter2D cf2d = new ContactFilter2D();
+        cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
+        List<Collider2D> res = new List<Collider2D>(); 
+        if(attackCollider.OverlapCollider(cf2d, res) > 0) {
+            Debug.Log("attack Success");
+            boss.damaged();
+        }
+        transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.2f).OnComplete(() => {
+            if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
+        });
+            
+        
+    }
+
+    //For Debug
     public void PlayerColor(){
         if(playerstate == PlayerState.Damaged){
             sr.color = Color.red;
@@ -228,5 +274,23 @@ public class PlayerBehaviour : MonoBehaviour
         else{
             sr.color = Color.white;
         }
+    }
+
+    private void OnDrawGizmos() {
+        Gizmos.color = Color.blue;
+
+    }
+
+    public int GetPlayerHP(){
+        return playerHealth;
+    }
+
+    public float GetPlayerStamina(){
+        return playerStamina;
+    }
+
+    public Vector3 V2toV3(Vector2 v){
+        Vector3 v3 = v;
+        return v3;
     }
 }
