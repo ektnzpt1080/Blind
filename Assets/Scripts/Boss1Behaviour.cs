@@ -143,8 +143,9 @@ public class Boss1Behaviour : MonoBehaviour
         lastPattern = boss1PatternList[0];
         
         while(true){
-            if( VectorBtoP().magnitude < lastPattern.startDistance ){
-                currentPattern = StartCoroutine(Pattern3());
+            //if( VectorBtoP().magnitude < lastPattern.startDistance ){
+            if(VectorBtoP().magnitude < 15f ){
+                currentPattern = StartCoroutine(Pattern6());
                 break;
             }
             else {
@@ -181,10 +182,11 @@ public class Boss1Behaviour : MonoBehaviour
     }
     
 
-    // 흰-흰-흰 정박
+    // 0 흰-흰-흰 정박
     IEnumerator Pattern0(){
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[0];
+        int i;
         int maxAttack = 3;
         GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
         
@@ -193,29 +195,30 @@ public class Boss1Behaviour : MonoBehaviour
 
         StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0]));
 
-        for(int i = 0 ; i < maxAttack; i++){
+        for(i = 0 ; i < maxAttack; i++){
             isDamageStopPattern = pattern.damageStopPattern[i];
             isParryStopPattern = pattern.parryStopPattern[i];
 
             Instantiate(preattackEffect, transform.position, Quaternion.identity);
-            yield return new WaitForSeconds(pattern.stanbyTime[0]);
+            yield return new WaitForSeconds(pattern.stanbyTime[i]);
             
-            AttackPattern1(pattern.maxDashDistance[0], pattern.properDashDistance[0], pattern.attackDistance[0], pattern.attacktype[i], pattern.attackDamage[i]);
+            AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
             MakeAttackSprite();
         }
 
         StartCoroutine(DefenselessStart());
     }
 
-    //흰흰 - 흰
+    // 1 흰흰 - 흰
     IEnumerator Pattern1(){
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[1];
         GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        
+        int i;
         // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
         // aiSR.sprite = pattern.preAttackSprites[0]
 
+        i = 0;
         StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0] + 0.2f));        
         
         isDamageStopPattern = pattern.damageStopPattern[0];
@@ -224,69 +227,81 @@ public class Boss1Behaviour : MonoBehaviour
         Instantiate(preattackEffect, transform.position, Quaternion.identity);
         yield return new WaitForSeconds(0.2f);
         Instantiate(preattackEffect, transform.position, Quaternion.identity);
-        yield return new WaitForSeconds(pattern.stanbyTime[0]);
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
-        AttackPattern1(pattern.maxDashDistance[0], pattern.properDashDistance[0], pattern.attackDistance[0], pattern.attacktype[0], pattern.attackDamage[0]);
-        MakeAttackSprite();
-        yield return new WaitForSeconds(pattern.stanbyTime[1]);
-        AttackPattern1(pattern.maxDashDistance[1], pattern.properDashDistance[1], pattern.attackDistance[1], pattern.attacktype[1], pattern.attackDamage[1]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
         MakeAttackSprite();
 
+        i = 1;
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        i = 2;
         Instantiate(preattackEffect, transform.position, Quaternion.identity);
-        yield return new WaitForSeconds(pattern.stanbyTime[2]);
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
-        AttackPattern1(pattern.maxDashDistance[2], pattern.properDashDistance[2], pattern.attackDistance[2], pattern.attacktype[2], pattern.attackDamage[2]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
         MakeAttackSprite();
 
         StartCoroutine(DefenselessStart());
     }
 
-    //흰흰 - 흰흰 - 흰
+    // 1 - 2 흰흰 - 흰흰 - 흰
     IEnumerator Pattern2(){
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[2];
         GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        
+        int i;
         // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
         // aiSR.sprite = pattern.preAttackSprites[0]
 
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0] + 0.2f));        
-        
-        Instantiate(preattackEffect, transform.position, Quaternion.identity);
-        yield return new WaitForSeconds(0.2f);
-        Instantiate(preattackEffect, transform.position, Quaternion.identity);
-        yield return new WaitForSeconds(pattern.stanbyTime[0]);
-        
-        AttackPattern1(pattern.maxDashDistance[0], pattern.properDashDistance[0], pattern.attackDistance[0], pattern.attacktype[0], pattern.attackDamage[0]);
-        MakeAttackSprite();
-        yield return new WaitForSeconds(pattern.stanbyTime[1]);
-        AttackPattern1(pattern.maxDashDistance[1], pattern.properDashDistance[1], pattern.attackDistance[1], pattern.attacktype[1], pattern.attackDamage[1]);
-        MakeAttackSprite();
+        i = 0;
+        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[i] + 0.2f));        
 
         Instantiate(preattackEffect, transform.position, Quaternion.identity);
         yield return new WaitForSeconds(0.2f);
         Instantiate(preattackEffect, transform.position, Quaternion.identity);
-        yield return new WaitForSeconds(pattern.stanbyTime[2]);
-
-        AttackPattern1(pattern.maxDashDistance[2], pattern.properDashDistance[2], pattern.attackDistance[2], pattern.attacktype[2], pattern.attackDamage[2]);
-        MakeAttackSprite();
-        yield return new WaitForSeconds(pattern.stanbyTime[3]);
-        AttackPattern1(pattern.maxDashDistance[3], pattern.properDashDistance[3], pattern.attackDistance[3], pattern.attacktype[3], pattern.attackDamage[3]);
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
         MakeAttackSprite();
         
+        i = 1;
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+
+        i = 2;
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(0.2f);
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        i = 3;
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        i = 4;
         Instantiate(preattackEffect, transform.position, Quaternion.identity);                
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
-        yield return new WaitForSeconds(pattern.stanbyTime[4]);
-        AttackPattern1(pattern.maxDashDistance[4], pattern.properDashDistance[4], pattern.attackDistance[4], pattern.attacktype[4], pattern.attackDamage[4]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
         MakeAttackSprite();
 
         StartCoroutine(DefenselessStart());
     }
 
-    // 흰 - 흰(엇박)
+    // 세부조정
+    // 3 흰 - 흰(엇박)
     IEnumerator Pattern3(){
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[3];
+        int i;
         int maxAttack = 2;
         GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
         
@@ -294,8 +309,8 @@ public class Boss1Behaviour : MonoBehaviour
         // aiSR.sprite = pattern.preAttackSprites[0]
 
         StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0]));
-
-        for(int i = 0 ; i < maxAttack; i++){
+        
+        for(i = 0 ; i < maxAttack; i++){
             isDamageStopPattern = pattern.damageStopPattern[i];
             isParryStopPattern = pattern.parryStopPattern[i];
 
@@ -309,11 +324,57 @@ public class Boss1Behaviour : MonoBehaviour
         StartCoroutine(DefenselessStart());
     }
 
-    [SerializeField] float redMaxDistance;
-    //돌진 - (빨강 공격)
-    IEnumerator LongPattern0(){
+    // 세부조정
+    // 4 흰 - 옆으로 돌아서 흰
+    IEnumerator Pattern4(){
         FootprintEnable(false);
-        Pattern pattern = boss1PatternList[0];
+        Pattern pattern = boss1PatternList[4];
+        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
+        int i;
+        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
+        // aiSR.sprite = pattern.preAttackSprites[0]
+
+        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0]));
+
+        
+        isDamageStopPattern = pattern.damageStopPattern[0];
+        isParryStopPattern = pattern.parryStopPattern[0];
+
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(pattern.stanbyTime[0]);
+        
+        i = 0;
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        i = 1;
+        yield return new WaitForSeconds(pattern.stanbyTime[1]);
+        int direction = Random.Range(0,2) * 2 - 1;
+        Vector3 moveposition = player.transform.position + Vector3.Cross(VectorBtoP(), Vector3.forward * direction).normalized * pattern.properDashDistance[i];
+        if(moveposition.x > border.x || moveposition.x < -border.x || moveposition.y > border.y || moveposition.y < -border.y){
+            moveposition = player.transform.position + Vector3.Cross(VectorBtoP(), Vector3.forward * - direction).normalized * pattern.properDashDistance[i];
+            if(moveposition.x > border.x || moveposition.x < -border.x || moveposition.y > border.y || moveposition.y < -border.y){
+                StartCoroutine(DefenselessStart());
+                yield break;
+            }
+        }
+
+        i = 2;        
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(pattern.stanbyTime[2]);
+
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        StartCoroutine(DefenselessStart());
+    }
+
+    [SerializeField] float redMaxDistance;
+    //세부 조정
+    // 5 돌진 - (빨강 공격) (멀리서 공격)
+    IEnumerator Pattern5(){
+        FootprintEnable(false);
+        Pattern pattern = boss1PatternList[5];
         
         GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
         // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
@@ -324,12 +385,12 @@ public class Boss1Behaviour : MonoBehaviour
         yield return new WaitForSeconds(pattern.stanbyTime[0]);
         
         Vector3 startposition = transform.position;
-        Vector3 v = VectorBtoP().normalized * redMaxDistance;
+        Vector3 v = VectorBtoP().normalized * pattern.maxDashDistance[0];
         transform.Translate(v);
 
         RaycastHit2D hit = Physics2D.Raycast(startposition, transform.position - startposition, (transform.position - startposition).magnitude, LayerMask.GetMask("Player"));
         if(hit.collider != null){
-            player.Attacked(startposition, 10, Pattern.AttackType.red);
+            player.Attacked(startposition, pattern.attackDamage[0], Pattern.AttackType.red);
         }
 
         GameObject attackSprite = Instantiate(afterimage, transform.position, Quaternion.identity);
@@ -341,7 +402,46 @@ public class Boss1Behaviour : MonoBehaviour
 
         StartCoroutine(DefenselessStart());
     }
+    
+    // 세부조정
+    // 6 흰 - 흰 (멀리서) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack)
+    IEnumerator Pattern6(){
+        Pattern pattern = boss1PatternList[6];
+        int i;
+        
+        float original_fpct = footprintCoolTime;
+        footprintCoolTime = 0.15f;
+        
+        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
+        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
+        // aiSR.sprite = pattern.preAttackSprites[0]
+        i = 0;
+        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[i]));
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
+        while(VectorBtoP().magnitude > pattern.properDashDistance[i]) {
+            Vector3 v = VectorBtoP();
+            footprintDirection = v;
+            transform.Translate(new Vector3(v.x, v.y, 0).normalized * 9.8f * Time.deltaTime);
+            yield return new WaitForFixedUpdate();
+        }
+        FootprintEnable(false);
+
+        footprintCoolTime = original_fpct;
+        
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        i = 1;
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+
+        StartCoroutine(DefenselessStart());
+    }
     public float blueattack1;
     public float blueattack2;
     //파랑 공격
