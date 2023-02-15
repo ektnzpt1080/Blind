@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04f198cc62745634c97255a7bbbe383c, type: 3}
+  m_Name: Pattern7
+  m_EditorClassIdentifier: 
+  attacktype: 000000000000000000000000
+  startDistance: 2.5
+  stanbyTime:
+  - 0.6
+  - 0.2
+  - 0.2
+  attackDistance:
+  - 2
+  - 2.2
+  - 2.4
+  maxDashDistance:
+  - 2
+  - 0
+  - 0
+  properDashDistance:
+  - 1
+  - 0
+  - 0
+  damageStopPattern: 010101
+  parryStopPattern: 010101
+  preAttackSprites: []
+  attackSprites: []
+  attackDamage: 0a0000000a0000000a000000

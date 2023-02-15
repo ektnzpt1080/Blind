@@ -143,9 +143,9 @@ public class Boss1Behaviour : MonoBehaviour
         lastPattern = boss1PatternList[0];
         
         while(true){
-            //if( VectorBtoP().magnitude < lastPattern.startDistance ){
-            if(VectorBtoP().magnitude < 15f ){
-                currentPattern = StartCoroutine(Pattern6());
+            if( VectorBtoP().magnitude < lastPattern.startDistance ){
+            //if(VectorBtoP().magnitude < 15f ){
+                currentPattern = StartCoroutine(Pattern7());
                 break;
             }
             else {
@@ -404,7 +404,7 @@ public class Boss1Behaviour : MonoBehaviour
     }
     
     // 세부조정
-    // 6 흰 - 흰 (멀리서) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack)
+    // 6 흰 - 흰 (멀리서 공격) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack)
     IEnumerator Pattern6(){
         Pattern pattern = boss1PatternList[6];
         int i;
@@ -437,6 +437,45 @@ public class Boss1Behaviour : MonoBehaviour
         Instantiate(preattackEffect, transform.position, Quaternion.identity);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+
+        StartCoroutine(DefenselessStart());
+    }
+ 
+    // 세부조정
+    // 7 흰흰흰 (빠르게)
+    IEnumerator Pattern7(){
+        FootprintEnable(false);
+        Pattern pattern = boss1PatternList[7];
+        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
+        int i;
+        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
+        // aiSR.sprite = pattern.preAttackSprites[0]
+
+        i = 0;
+        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0] + 0.4f));        
+        
+        isDamageStopPattern = pattern.damageStopPattern[0];
+        isParryStopPattern = pattern.parryStopPattern[0];
+
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(0.2f);
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(0.2f);
+        Instantiate(preattackEffect, transform.position, Quaternion.identity);
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+
+        i = 1;
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
+        MakeAttackSprite();
+        
+        i = 2;
+        yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
         MakeAttackSprite();
 

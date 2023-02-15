@@ -202,10 +202,10 @@ public class PlayerBehaviour : MonoBehaviour
     //공격 + 파랑 공격 패링 판정
     public void Attack(){
         Vector2 mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-        //애니메이션 넣기
         if(blueList.Count > 0 && Vector2.Angle(blueList[0].attackDirection, -mouseVec) < 75){
             Debug.Log("blue attack parried");
             blueList.RemoveAt(0);
+            // TODO : parry 됐을때의 적절한 처리
         }
         else{
             playerstate = PlayerState.Attack;
