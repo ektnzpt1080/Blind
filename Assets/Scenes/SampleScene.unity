@@ -1047,7 +1047,7 @@ PrefabInstance:
       objectReference: {fileID: 657853710}
     - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: boss1PatternList.Array.size
-      value: 8
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: boss1PatternList.Array.data[1]
@@ -1077,6 +1077,10 @@ PrefabInstance:
       propertyPath: boss1PatternList.Array.data[7]
       value: 
       objectReference: {fileID: 11400000, guid: 103c4fbd8af250941bdc5704fde355a0, type: 2}
+    - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
+      propertyPath: boss1PatternList.Array.data[8]
+      value: 
+      objectReference: {fileID: 11400000, guid: 42fd0967bd27e3e48af763cccdfdca06, type: 2}
     - target: {fileID: 5982467590878833631, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: m_Name
       value: Boss1
