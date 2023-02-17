@@ -20,7 +20,6 @@ public class Pattern : ScriptableObject
     public List<float> maxDashDistance; // 최대 돌진 사거리
     public List<float> properDashDistance; // 적정 거리
     public List<bool> damageStopPattern; // 데미지가 패턴을 멈추는지 여부
-    public List<bool> parryStopPattern; // 패링으로 QTE를 만들 수 있는지 여부
     public List<Sprite> preAttackSprites;
     public List<Sprite> attackSprites;
     public List<int> attackDamage;

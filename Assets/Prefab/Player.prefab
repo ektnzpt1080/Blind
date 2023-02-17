@@ -128,7 +128,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 2.8129845, y: -0.15457249}
+  m_Offset: {x: 2.862814, y: -0.15457249}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -139,7 +139,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 6.625969, y: 4.222976}
+  m_Size: {x: 6.725628, y: 4.222976}
   m_EdgeRadius: 0
 --- !u!1 &1479259209791494895
 GameObject:
@@ -259,10 +259,20 @@ MonoBehaviour:
   knuckbackBig: 1
   attackDashDistance: 0.5
   border: {x: 14, y: 6}
+  QTEDashDistance: 1.5
+  QTEDashTime: 0.8
+  zoomMaxTime: 0.8
   attackRange: {fileID: 1479259208905299878}
   boss: {fileID: 0}
   parryEffect: {fileID: 6860616751186999244, guid: e783ae18aa568684185317c862deb956, type: 3}
+  blueObject: {fileID: 1238222668428875813, guid: e0ce900009b56cd4a801d049576a9f8c, type: 3}
   playerstate: 0
+  boDistance: 4.5
+  boAngle: 0
+  boFloatDistanceY: 2
+  boFloatDistanceX: 3
+  boTime: 1.5
+  boTime2: 2.5
 --- !u!114 &1203730617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -275,7 +285,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 704aef2f1b201284e86a61d8cfa04a96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  QTEBoard: {fileID: 0}
+  board: {fileID: 6217454755872722968, guid: 7ca5b8e79d50c2c4ca432ed2e7b7b9d5, type: 3}
+  canvas: {fileID: 0}
 --- !u!50 &1479259209791494900
 Rigidbody2D:
   serializedVersion: 4

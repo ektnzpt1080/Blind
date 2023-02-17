@@ -44,14 +44,14 @@ public class PlayerBehaviour : MonoBehaviour
 
     
     [SerializeField] GameObject attackRange;
+    
     [SerializeField] Boss1Behaviour boss;
 
     Collider2D playerCollider;
     Collider2D attackCollider;
     
-    public GameObject parryEffect; // parry 했을 때 이펙트
-    Vector3 QTEStartpoint; // QTE 보조용 벡터
-
+    [SerializeField] GameObject parryEffect; // parry 했을 때 이펙트
+    [SerializeField] GameObject blueObject; // blue parry 했을 때 object
 
     //건드리면 안됨
     float lastGuardTime; //Player가 마지막으로 가드를 끝낸 시간
@@ -70,7 +70,8 @@ public class PlayerBehaviour : MonoBehaviour
     Vector2 mouseVec; //mouse 벡터
     bool zoomed; //줌인 되어 있으면 true
     float zoomedTime; //줌인 된 시간
-
+    Vector3 QTEStartpoint; // QTE 보조용 벡터
+    
 
     // Start is called before the first frame update
     void Start()
@@ -226,9 +227,10 @@ public class PlayerBehaviour : MonoBehaviour
     //공격 + 파랑 공격 패링 판정
     public void Attack(){
         if(blueList.Count > 0 && Vector2.Angle(blueList[0].attackDirection, -mouseVec) < 75){
-            Debug.Log("blue attack parried");
             blueList.RemoveAt(0);
             // TODO : parry 됐을때의 적절한 처리
+            Instantiate(parryEffect, transform.position + V2toV3(mouseVec).normalized * 0.4f, Quaternion.identity);
+            InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
         }
         else{
             playerstate = PlayerState.Attack;
@@ -243,6 +245,51 @@ public class PlayerBehaviour : MonoBehaviour
                 if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
             });
         }
+    }
+
+    public float boDistance;
+    
+    public float boAngle;
+    
+    public void InstantiateBlueObject(Vector3 pos, Vector3 mouseV){
+        GameObject bo = Instantiate(blueObject, pos, Quaternion.identity);
+        Transform mask = bo.transform.GetChild(0);
+        SpriteRenderer sr = bo.GetComponent<SpriteRenderer>();
+        float delta = Random.Range(-boAngle, boAngle) * Mathf.Deg2Rad;
+        Vector3 d = mouseVec.normalized * boDistance;
+        Vector3 rotated = new Vector2(d.x *  Mathf.Cos(delta) - d.y * Mathf.Sin(delta), d.x * Mathf.Sin(delta) + d.y * Mathf.Cos(delta));
+        float angle = Vector2.SignedAngle(Vector2.down, rotated);
+        bo.transform.rotation = Quaternion.Euler(0,0,angle);
+
+        bo.transform.DOMove(pos + rotated, 0.15f).OnComplete(() => {
+            mask.DOLocalMove(new Vector3(mask.localPosition.x , -3.8f, 0f), 0.05f);
+            sr.DOFade(0f, boTime);
+        });
+        GameObject.Destroy(bo, boTime + 2f);
+    }
+
+    public float boFloatDistanceY;
+    public float boFloatDistanceX;
+    public float boTime;
+    public float boTime2;
+    public void InstantiateBlueObject2(Vector3 pos, Vector3 bAttackDirection){
+        GameObject bo = Instantiate(blueObject, pos, Quaternion.identity);
+        Transform mask = bo.transform.GetChild(0);
+        SpriteRenderer sr = bo.GetComponent<SpriteRenderer>();
+        int direction;
+        if(bAttackDirection.x > 0) direction = 1;
+        else direction = -1;
+        float vectorX = Random.Range(boFloatDistanceX / 2, boFloatDistanceX);
+        Sequence sequence = DOTween.Sequence()
+        .Append(bo.transform.DOMoveX(direction * vectorX, boTime + boTime2).SetRelative().SetEase(Ease.Linear))
+        .Join(bo.transform.DOMoveY(boFloatDistanceY, boTime).SetRelative().SetEase(Ease.OutCubic))
+        .Insert(boTime, bo.transform.DOMoveY(-3f * boFloatDistanceY, boTime2).SetRelative().SetEase(Ease.InSine))
+        .Join(sr.DOFade(0,boTime2).SetEase(Ease.OutSine))
+        .Insert(0, bo.transform.DORotate(new Vector3(0,0,360), 0.8f, RotateMode.FastBeyond360).SetLoops(15, LoopType.Restart).SetEase(Ease.Linear))
+        .OnComplete(() => {
+            Destroy(bo);
+        });
+        sequence.Play();
     }
 
     public void PreQTE(){
@@ -273,7 +320,7 @@ public class PlayerBehaviour : MonoBehaviour
     public void QTEDash(bool firstcall, bool isSuccess){
         if(firstcall) QTEStartpoint = transform.position;
         Vector3 d = (boss.transform.position - QTEStartpoint).normalized * QTEDashDistance;
-        float delta = Random.Range(-35f, 35f) * Mathf.Deg2Rad;
+        float delta = Random.Range(-60f, 60f) * Mathf.Deg2Rad;
         Vector3 rotated = new Vector2(d.x *  Mathf.Cos(delta) - d.y * Mathf.Sin(delta), d.x * Mathf.Sin(delta) + d.y * Mathf.Cos(delta));
         
         transform.DOKill(false);
@@ -378,7 +425,7 @@ public class PlayerBehaviour : MonoBehaviour
         transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
             playerstate = PlayerState.Idle;
         });
-        boss.CeasePattern();
+        boss.CeasePattern(true);
 
     }
 

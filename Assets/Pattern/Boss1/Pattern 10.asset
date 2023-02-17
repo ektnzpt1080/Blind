@@ -10,25 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 04f198cc62745634c97255a7bbbe383c, type: 3}
-  m_Name: Pattern6
+  m_Name: Pattern 10
   m_EditorClassIdentifier: 
-  explanation: Run W - W (range)
-  attacktype: 0000000000000000
-  startDistance: 15
+  explanation: W-turn (W?B) * 3 (A4)
+  attacktype: 00000000030000000000000002000000
+  startDistance: 2.5
   stanbyTime:
-  - 0.8
-  - 0.8
+  - 0.7
+  - 0.12
+  - 0.6
+  - 0.6
   attackDistance:
-  - 2
-  - 2
+  - 0
+  - 2.5
+  - 0
+  - 0
   maxDashDistance:
-  - 2
-  - 2
+  - 5.5
+  - 0
+  - 5
+  - 1.4
   properDashDistance:
-  - 1.5
-  - 1.5
-  damageStopPattern: 0101
-  parryStopPattern: 0101
+  - 0
+  - 0
+  - 0
+  - 0
+  damageStopPattern: 010101
   preAttackSprites: []
   attackSprites: []
-  attackDamage: 0a0000000a000000
+  attackDamage: 0a0000000a0000000a0000000a000000

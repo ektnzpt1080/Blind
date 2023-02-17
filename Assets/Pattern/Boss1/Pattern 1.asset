@@ -10,21 +10,29 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 04f198cc62745634c97255a7bbbe383c, type: 3}
-  m_Name: Pattern8
+  m_Name: Pattern 1
   m_EditorClassIdentifier: 
-  explanation: backstep B
-  attacktype: 02000000
-  startDistance: 2.5
+  explanation: WW-W
+  attacktype: 000000000000000000000000
+  startDistance: 1.5
   stanbyTime:
   - 0.8
+  - 0.2
+  - 0.6
   attackDistance:
-  - 0
+  - 2
+  - 2
+  - 2
   maxDashDistance:
-  - 2.1
+  - 2
+  - 0.5
+  - 2
   properDashDistance:
-  - 0
-  damageStopPattern: 01
-  parryStopPattern: 01
+  - 1.5
+  - 0.2
+  - 1.5
+  damageStopPattern: 010101
+  parryStopPattern: 010101
   preAttackSprites: []
   attackSprites: []
-  attackDamage: 0a000000
+  attackDamage: 0a0000000a0000000a000000

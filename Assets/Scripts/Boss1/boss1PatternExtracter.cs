@@ -1,18 +1,78 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class boss1PatternExtracter : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
+    public List<PatternLink> patternList;
+    public Boss1Behaviour b1b;
+    public int lastPatternNum;
+    public bool isAdvanced;
+
+    public List<PatternLink> patternList_N;
+    public List<PatternLink> closePatternList_N;
+    public List<PatternLink> rangePatternList_N;
+    public List<PatternLink> patternList_A;
+    public List<PatternLink> closePatternList_A;
+    public List<PatternLink> rangePatternList_A;
+
+
+    public void StartPatternList(Boss1Behaviour bb){
+        patternList = new List<PatternLink>();
+        b1b = bb;
+        lastPatternNum = -1;
+    }
+
+    public void PreparePatterns(){
+        patternList_N = patternList.Where( x => !x.isAdvanced ).ToList();
+        closePatternList_N = patternList.Where( x => !x.isAdvanced && !x.isRangedAttack).ToList();
+        rangePatternList_N  = patternList.Where( x => !x.isAdvanced && x.isRangedAttack).ToList();; 
+        patternList_A = patternList.ToList();
+        closePatternList_A = patternList.Where( x => x.isRangedAttack).ToList();
+        rangePatternList_A = patternList.Where( x => x.isRangedAttack).ToList();
+    }
+
+    public void Advanced(){
+        isAdvanced = true;
+    }
+
+    //뽑아주는 걸로 사용
+    public string NextPattern(out int res) {
+        if(isAdvanced) {
+            return RandomExtract(patternList_A, out res);
+        }
+        else{
+            return RandomExtract(patternList_N, out res);
+        }
         
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+    //가드 후 쓸 수 있는 짧은 패턴들 중 반환
+    public string ClosePattern(out int res) {
+        if(isAdvanced) {
+            return RandomExtract(closePatternList_A, out res);
+        }
+        else{
+            return RandomExtract(closePatternList_N, out res);
+        }
+    }
+
+    //거리가 있는 패턴들 중 반환
+    public string RangePattern(out int res){
+        if(isAdvanced) {
+            return RandomExtract(rangePatternList_A, out res);
+        }
+        else{
+            return RandomExtract(rangePatternList_N, out res);
+        }
+    }
+
+    public string RandomExtract(List<PatternLink> pl, out int res){
+        do {
+            res = Random.Range(0, pl.Count);
+        } while(res == lastPatternNum);
+        lastPatternNum = res;
+        return pl[res].pattern;
     }
 }

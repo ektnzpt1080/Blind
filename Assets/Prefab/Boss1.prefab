@@ -96,6 +96,7 @@ GameObject:
   - component: {fileID: 5982467590878833619}
   - component: {fileID: 1850559989}
   - component: {fileID: 1850559988}
+  - component: {fileID: 1850559995}
   m_Layer: 6
   m_Name: Boss1
   m_TagString: Untagged
@@ -159,7 +160,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 4
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -183,13 +184,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ed73931caef51b45adde079bf1bc7e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemystate: 0
   boss1PatternList:
   - {fileID: 11400000, guid: ec9d047f15295b94d9f1dc06836eb970, type: 2}
+  - {fileID: 11400000, guid: 0f2cc42e9daacb0448d624e545de0ed9, type: 2}
+  - {fileID: 11400000, guid: f1089b0740b25074dbe4bfd308c1d6c2, type: 2}
+  - {fileID: 11400000, guid: 43ff710a34e64144081802351f0bd9ec, type: 2}
+  - {fileID: 11400000, guid: 4c3d84cc998fac34e8fd22975a2906cb, type: 2}
+  - {fileID: 11400000, guid: fdc775ca54d5132439ff6489e232e127, type: 2}
+  - {fileID: 11400000, guid: 2896729607088924694b7235f613f886, type: 2}
+  - {fileID: 11400000, guid: 103c4fbd8af250941bdc5704fde355a0, type: 2}
+  - {fileID: 11400000, guid: 42fd0967bd27e3e48af763cccdfdca06, type: 2}
+  - {fileID: 11400000, guid: 0ed00cbc3c0f1c3438c8aab2f5201426, type: 2}
+  - {fileID: 11400000, guid: 30827f0fe51d0e44083b08b2c47a8dc1, type: 2}
   border: {x: 14, y: 6}
   player: {fileID: 0}
   footPrintObject: {fileID: 1857504948, guid: 495574eb146e3b54d900e04a3035e554, type: 3}
   afterimage: {fileID: 7059040628164786613, guid: d02c5f50e665fd347891e48c03accb4b, type: 3}
-  preattackEffect: {fileID: 3737505982307875082, guid: cda9806c40957e343a717d85ea4b2aff, type: 3}
+  preattackEffectW: {fileID: 3737505982307875082, guid: 4a197e7b294d79d46a05f52a01d30709, type: 3}
+  preattackEffectR: {fileID: 3737505982307875082, guid: cda9806c40957e343a717d85ea4b2aff, type: 3}
+  preattackEffectB: {fileID: 3737505982307875082, guid: 00cb17150505a434f94d0c9ca8a0ebf6, type: 3}
   walkSpeed: 1
   walkToPatternTime: 1.6
   walkToPatternDistance: 0
@@ -197,12 +211,8 @@ MonoBehaviour:
   chaseSpeed: 2.2
   footprintCoolTime: 0.5
   footprintTime: 1
-  defenselessTime: 1
-  defenselessEnd: 0
-  footprintEnable: 0
-  redMaxDistance: 4
-  blueattack1: 0.3
-  blueattack2: 0.4
+  defenselessTime: 1.8
+  bossStaminaMax: 100
 --- !u!50 &1850559989
 Rigidbody2D:
   serializedVersion: 4
@@ -240,3 +250,15 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 0.5
+--- !u!114 &1850559995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5982467590878833631}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ab3195b4aee0747a5fda76ff7f5275, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

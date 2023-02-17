@@ -7,7 +7,7 @@ using TMPro;
 public class UIManager : MonoBehaviour
 {
 
-    public TextMeshProUGUI playerHP, playerStamina, bossHP;
+    public TextMeshProUGUI playerHP, playerStamina, bossHP, bossStamina;
     public PlayerBehaviour player;
     public Boss1Behaviour boss;
 
@@ -20,8 +20,7 @@ public class UIManager : MonoBehaviour
         else {
             playerStamina.text = "Stamina : " + player.GetPlayerStamina().ToString("F2") + " / 4";
         }
-        
         bossHP.text = "Boss HP : "+ boss.GetBossHP() + " / 1000";
-
+        bossStamina.text = "Boss Stamina : "+ boss.GetBossStamina() + " / " + boss.GetBossMaxStamina();
     }
 }   

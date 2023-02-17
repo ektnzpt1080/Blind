@@ -10,26 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 04f198cc62745634c97255a7bbbe383c, type: 3}
-  m_Name: Pattern1
+  m_Name: Pattern 0
   m_EditorClassIdentifier: 
-  explanation: WW-W
+  explanation: W-W-W
   attacktype: 000000000000000000000000
-  startDistance: 1.5
+  startDistance: 2.5
   stanbyTime:
   - 0.8
-  - 0.2
-  - 0.6
+  - 0.8
+  - 0.8
   attackDistance:
   - 2
   - 2
   - 2
   maxDashDistance:
   - 2
-  - 0.5
+  - 2
   - 2
   properDashDistance:
   - 1.5
-  - 0.2
+  - 1.5
   - 1.5
   damageStopPattern: 010101
   parryStopPattern: 010101

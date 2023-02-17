@@ -217,6 +217,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   player: {fileID: 0}
+  boss: {fileID: 0}
   borderU: {fileID: 7628667801375426199}
   borderD: {fileID: 7628667801625167330}
   borderR: {fileID: 7628667800394697954}
