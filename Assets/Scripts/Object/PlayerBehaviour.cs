@@ -17,7 +17,8 @@ public class PlayerBehaviour : MonoBehaviour
         Running,
         Parrying,
         Guard,
-        Special
+        QTE,
+        OnlyAttack
     }
 
     //건드릴 것
@@ -37,14 +38,19 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float knuckbackBig = 1.0f; // 넉백 거리 (큼, 데미지 당함)
     [SerializeField] float attackDashDistance; // 공격 대시 사거리
     [SerializeField] Vector2 border; // 나갈 수 없는 테두리
+    [SerializeField] float QTEDashDistance; //QTE 대시 거리
+    [SerializeField] float QTEDashTime; //QTE 대시 시간
+    [SerializeField] float zoomMaxTime; //zoom max 시간
 
-    Collider2D playerCollider;
+    
     [SerializeField] GameObject attackRange;
-    Collider2D attackCollider;
-
     [SerializeField] Boss1Behaviour boss;
 
+    Collider2D playerCollider;
+    Collider2D attackCollider;
+    
     public GameObject parryEffect; // parry 했을 때 이펙트
+    Vector3 QTEStartpoint; // QTE 보조용 벡터
 
 
     //건드리면 안됨
@@ -55,17 +61,22 @@ public class PlayerBehaviour : MonoBehaviour
     float guardTime; //Player가 가드하고 있는 시간
     float playerStamina; //Player 스태미나
     [SerializeField] PlayerState playerstate; //PlayerState
-    Vector2 moveDirection;
-    List<BlueAttack> blueList;
+    Vector2 moveDirection; // 움직이는 방향
+    Vector2 rollDirection; // 롤 방향 평소엔 영벡터
+    List<BlueAttack> blueList; // blue attack 처리
     Camera mainCamera;
     SpriteRenderer sr;
+    PlayerQTE pQTE; //QTE 관련
+    Vector2 mouseVec; //mouse 벡터
+    bool zoomed; //줌인 되어 있으면 true
+    float zoomedTime; //줌인 된 시간
 
-    
 
     // Start is called before the first frame update
     void Start()
     {
         sr = GetComponent<SpriteRenderer>();
+        pQTE = GetComponent<PlayerQTE>();
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
         parryDuration = parryDurationMax;
@@ -100,6 +111,11 @@ public class PlayerBehaviour : MonoBehaviour
         BlueAttackProcess();
         
         PlayerColor();
+
+        if(zoomed && zoomedTime + zoomMaxTime < Time.time) {
+            EndZoom();
+            playerstate = PlayerState.Idle;
+        }
     }
 
     void PlayerControl()
@@ -108,6 +124,7 @@ public class PlayerBehaviour : MonoBehaviour
         {
             if (AttackAvailiableState()) {
                 Attack();
+                EndZoom();
             }
         }
         else if (Input.GetMouseButtonDown(1))
@@ -163,10 +180,16 @@ public class PlayerBehaviour : MonoBehaviour
             if(playerStamina < 0 || (moveDirection.x == 0 && moveDirection.y == 0)) playerstate = PlayerState.Idle;
         }
 
+        mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+        float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
+        attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
+
+
     }
 
     IEnumerator Rolling(Vector2 v)
     {
+        rollDirection = v;
         lastRollTime = Time.time;
         lastStaminaSpendTime = Time.time;
         playerstate = PlayerState.Roll;
@@ -179,6 +202,7 @@ public class PlayerBehaviour : MonoBehaviour
             if (Input.GetKey(KeyCode.LeftShift)) playerstate = PlayerState.Running;
             else playerstate = PlayerState.Idle;
         }
+        rollDirection = Vector2.zero;
 
     }
 
@@ -191,7 +215,7 @@ public class PlayerBehaviour : MonoBehaviour
     public bool AttackAvailiableState()
     {
         return playerstate == PlayerState.Idle || playerstate == PlayerState.Running || 
-            playerstate == PlayerState.Guard || playerstate == PlayerState.Parrying;
+            playerstate == PlayerState.Guard || playerstate == PlayerState.Parrying || playerstate == PlayerState.OnlyAttack;
     }
 
     public bool DamageAvailiableState(){
@@ -201,7 +225,6 @@ public class PlayerBehaviour : MonoBehaviour
 
     //공격 + 파랑 공격 패링 판정
     public void Attack(){
-        Vector2 mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
         if(blueList.Count > 0 && Vector2.Angle(blueList[0].attackDirection, -mouseVec) < 75){
             Debug.Log("blue attack parried");
             blueList.RemoveAt(0);
@@ -209,19 +232,59 @@ public class PlayerBehaviour : MonoBehaviour
         }
         else{
             playerstate = PlayerState.Attack;
-            float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
-            attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
             ContactFilter2D cf2d = new ContactFilter2D();
             cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
             List<Collider2D> res = new List<Collider2D>(); 
             if(attackCollider.OverlapCollider(cf2d, res) > 0) {
-                Debug.Log("attack Success");
-                boss.damaged();
+                boss.Damaged();
             }
+            transform.DOKill(false);
             transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.2f).OnComplete(() => {
                 if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
             });
         }
+    }
+
+    public void PreQTE(){
+        playerstate = PlayerState.OnlyAttack;
+    }
+
+    public void StartQTE(int num = -1){
+        zoomed = false;
+        playerstate = PlayerState.QTE;
+        int attacknum = num;
+        if(attacknum < 0 ) attacknum = Random.Range(6,9);
+        
+        boss.transform.position = Vector3.zero + (boss.transform.position - transform.position).normalized * 2.0f;
+        transform.position = Vector3.zero;
+        pQTE.StartQTE(attacknum);
+    }
+
+    public void EndQTE(){
+        StartCoroutine(EndQTE_());    
+        boss.EndQTE();
+    }
+
+    IEnumerator EndQTE_(){
+        yield return new WaitForSeconds(0.4f);
+        playerstate = PlayerState.Idle;
+    }
+
+    public void QTEDash(bool firstcall, bool isSuccess){
+        if(firstcall) QTEStartpoint = transform.position;
+        Vector3 d = (boss.transform.position - QTEStartpoint).normalized * QTEDashDistance;
+        float delta = Random.Range(-35f, 35f) * Mathf.Deg2Rad;
+        Vector3 rotated = new Vector2(d.x *  Mathf.Cos(delta) - d.y * Mathf.Sin(delta), d.x * Mathf.Sin(delta) + d.y * Mathf.Cos(delta));
+        
+        transform.DOKill(false);
+        QTEStartpoint = boss.transform.position + rotated;
+        transform.DOMove(QTEStartpoint, QTEDashTime).SetEase(Ease.OutQuint);
+        if(!isSuccess) {
+            float r = Random.Range(0f, 360f * Mathf.Deg2Rad);
+            Instantiate(parryEffect, new Vector3(boss.transform.position.x + 0.8f * Mathf.Cos(r), boss.transform.position.y + 0.8f * Mathf.Sin(r), 0), Quaternion.identity);
+        }
+
+        boss.Damaged( isSuccess );
     }
 
     public void AfterParry(){
@@ -231,44 +294,59 @@ public class PlayerBehaviour : MonoBehaviour
 
     // 빨강, 하양공격의 패리와 가드 판정
     public void Attacked( Vector3 attackCenter, int damage, Attacktype attacktype, float guardKnuckback = -1f){
-        Vector3 mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
         Vector3 attackVec =  attackCenter - transform.position;
         float angle = Vector2.Angle(mouseVec, attackVec);
         
         if(attacktype == Attacktype.white){
             if(playerstate == PlayerState.Parrying && angle < 75){
                 Vector3 v3 = attackVec;
-                Debug.Log("Attack Parried");
                 Instantiate(parryEffect, transform.position + v3.normalized * 0.5f , Quaternion.identity);
                 AfterParry();
+                boss.StaminaDamaged();
                 GuardKnuckback(-attackVec);
             }
             else if(playerstate == PlayerState.Guard && angle < 75){
-                DamagedSmall(damage / 3, - attackVec.normalized);
+                DamagedSmall(damage / 2, - attackVec.normalized);
                 GuardKnuckback(-attackVec);
             }
 
             else if( DamageAvailiableState() || playerstate == PlayerState.Parrying || playerstate == PlayerState.Guard){
                 DamagedBig(damage, -attackVec.normalized);
-                // TODO : 보스한테 캐릭터 맞았다는 신호 보내기
+                
             }
         }
         else if(attacktype == Attacktype.red){
-            if(playerstate == PlayerState.Roll){
-                return;
+            if(playerstate == PlayerState.Roll && Vector2.Angle(attackVec, rollDirection) < 75){
+                StopAllCoroutines();
+                transform.DOMove(transform.position + V2toV3(rollDirection).normalized * 1.2f, zoomMaxTime);
+                boss.StaminaDamaged(30, true);
+                playerstate = PlayerState.OnlyAttack;
             }
             else if(DamageAvailiableState() || playerstate == PlayerState.Parrying || playerstate == PlayerState.Guard) {
-                DamagedBig(damage, -attackVec.normalized);
+                DamagedBig(damage, -attackVec.normalized);                
             }
         }
     }
-        
+
+    public void StartZoom(){
+        zoomed = true;
+        zoomedTime = Time.time;
+    }
+
+    public void EndZoom(){
+        if(zoomed && playerstate != PlayerState.QTE) {
+            GameManager.Instance.CameraSetting.SmoothEndZoom();
+            zoomed = false;
+            boss.SkipQTE();
+            Debug.Log("pb endzoom");
+        }
+    }
+
     public void AttackedBlue( Vector3 attackCenter, Vector3 targetPosition, int damage, float duration){
         blueList.Add(new BlueAttack(attackCenter, targetPosition, damage, Time.time + duration));
         blueList.Sort((a,b) => a.time.CompareTo(b.time));
     }
-    
-    
+
     public void BlueAttackProcess(){
         if(blueList.Count != 0){
             if(blueList[0].time < Time.time){
@@ -286,7 +364,6 @@ public class PlayerBehaviour : MonoBehaviour
             }
         }
     }
-    
 
     // 클린 히트했을때
     public void DamagedBig(int damage, Vector3 vec){
@@ -301,6 +378,7 @@ public class PlayerBehaviour : MonoBehaviour
         transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
             playerstate = PlayerState.Idle;
         });
+        boss.CeasePattern();
 
     }
 
@@ -348,9 +426,13 @@ public class PlayerBehaviour : MonoBehaviour
         else if(playerstate == PlayerState.Attack){
             sr.color = Color.yellow;
         }
+        else if(playerstate == PlayerState.QTE){
+            sr.color = Color.magenta;
+        }
         else{
             sr.color = Color.white;
         }
+
         
     }
     private void OnDrawGizmos() {

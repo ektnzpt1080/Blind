@@ -12,34 +12,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04f198cc62745634c97255a7bbbe383c, type: 3}
   m_Name: Pattern4
   m_EditorClassIdentifier: 
-  attacktype: 0000000000000000000000000000000000000000
+  explanation: W-turn W
+  attacktype: 000000000300000000000000
   startDistance: 2.5
   stanbyTime:
   - 0.8
-  - 0.2
-  - 0.6
-  - 0.2
+  - 0.12
   - 0.6
   attackDistance:
-  - 2
-  - 2
-  - 2
-  - 2
-  - 2
+  - 0
+  - 2.5
+  - 0
   maxDashDistance:
-  - 2
-  - 0.5
-  - 2
-  - 0.5
-  - 2
+  - 5.5
+  - 0
+  - 5
   properDashDistance:
   - 1.5
-  - 0.2
+  - 0
   - 1.5
-  - 0.2
-  - 1.5
-  damageStopPattern: 0101010101
-  parryStopPattern: 0101010101
+  damageStopPattern: 010101
+  parryStopPattern: 010101
   preAttackSprites: []
   attackSprites: []
-  attackDamage: 0a0000000a0000000a0000000a0000000a000000
+  attackDamage: 0a0000000a0000000a000000

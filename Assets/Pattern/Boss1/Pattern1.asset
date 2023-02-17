@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04f198cc62745634c97255a7bbbe383c, type: 3}
   m_Name: Pattern1
   m_EditorClassIdentifier: 
+  explanation: WW-W
   attacktype: 000000000000000000000000
-  startDistance: 2.5
+  startDistance: 1.5
   stanbyTime:
   - 0.8
   - 0.2

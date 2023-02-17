@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1291138484}
   - component: {fileID: 1291138485}
-  m_Layer: 0
-  m_Name: GameObject
+  m_Layer: 7
+  m_Name: Mask
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -93,7 +93,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1479259208905299879}
   - component: {fileID: 1479259208905299872}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: AttackRange
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -152,9 +152,10 @@ GameObject:
   - component: {fileID: 1479259209791494889}
   - component: {fileID: 1479259209791494888}
   - component: {fileID: 1479259209791494890}
+  - component: {fileID: 1203730617}
   - component: {fileID: 1479259209791494900}
   - component: {fileID: 1479259209791494891}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -262,6 +263,19 @@ MonoBehaviour:
   boss: {fileID: 0}
   parryEffect: {fileID: 6860616751186999244, guid: e783ae18aa568684185317c862deb956, type: 3}
   playerstate: 0
+--- !u!114 &1203730617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1479259209791494895}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 704aef2f1b201284e86a61d8cfa04a96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  QTEBoard: {fileID: 0}
 --- !u!50 &1479259209791494900
 Rigidbody2D:
   serializedVersion: 4

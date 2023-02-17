@@ -11,8 +11,9 @@ GameObject:
   - component: {fileID: 2250040368458650767}
   - component: {fileID: 9049019957519574756}
   - component: {fileID: 8595896573168455721}
+  - component: {fileID: 8652544619141840697}
   m_Layer: 0
-  m_Name: PreAttackEffect2
+  m_Name: PreAttackEffectB
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -223,7 +224,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 1, g: 1, b: 1, a: 1}
-      maxColor: {r: 1, g: 1, b: 1, a: 1}
+      maxColor: {r: 0.09638655, g: 0.5741586, b: 0.8962264, a: 1}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -4870,3 +4871,15 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
+--- !u!114 &8652544619141840697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3737505982307875082}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c4156ee6b209354abd10b424400c368, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

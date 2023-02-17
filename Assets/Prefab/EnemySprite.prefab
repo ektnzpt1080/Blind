@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7059040628164786618}
   - component: {fileID: 7059040628164786619}
+  - component: {fileID: 7280129580658631594}
   m_Layer: 0
   m_Name: EnemySprite
   m_TagString: Untagged
@@ -84,3 +85,16 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &7280129580658631594
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7059040628164786613}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7b75900adcab6542ae93843bbb54664, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sr: {fileID: 7059040628164786619}
