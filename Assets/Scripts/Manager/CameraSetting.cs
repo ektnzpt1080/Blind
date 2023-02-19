@@ -90,12 +90,21 @@ public class CameraSetting : MonoBehaviour
 
     public void SmoothEndZoom(){
         Time.timeScale = 1f;
-        StartCoroutine(SmoothZoomOut(4.5f));
+        StartCoroutine(SmoothZoomOut());
     }
 
-    IEnumerator SmoothZoomOut(float propersize){
+    IEnumerator SmoothZoomOut(){
         //cvc.transform.position = new Vector3 (0,0,-10);
+        float propersize = 4.5f;
         while(cvc.m_Lens.OrthographicSize < propersize){
+            Vector2 vpb = Abs(player.transform.position - boss.transform.position);  
+            if(vpb.x > 1.76 * vpb.y){
+                propersize = vpb.x / 1.76f * 1.2f;
+            }
+            else{
+                propersize = vpb.y * 1.2f;
+            }
+            propersize = Mathf.Clamp(propersize, minimum, maximum);
             cvc.m_Lens.OrthographicSize = Mathf.Lerp(cvc.m_Lens.OrthographicSize, propersize + 0.2f, Time.deltaTime * 0.8f);
             yield return new WaitForFixedUpdate();
         }

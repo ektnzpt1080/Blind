@@ -48,6 +48,7 @@ public class boss1PatternExtracter : MonoBehaviour
         
     }
 
+
     //가드 후 쓸 수 있는 짧은 패턴들 중 반환
     public string ClosePattern(out int res) {
         if(isAdvanced) {
@@ -72,7 +73,21 @@ public class boss1PatternExtracter : MonoBehaviour
         do {
             res = Random.Range(0, pl.Count);
         } while(res == lastPatternNum);
+        
+        PatternLink ret = pl[res];
         lastPatternNum = res;
-        return pl[res].pattern;
+        if(isAdvanced && pl[res].advanced is not null){
+            if(! (pl[res].advanced.isAdvancedFirstUse)){
+                ret = pl[res].advanced;
+                pl[res].advanced.isAdvancedFirstUse = true;
+                res = pl[res].advanced.num;
+            }
+            else if(Random.Range(0,1) < pl[res].advanced.advancedUsage ){
+                ret = pl[res].advanced;
+                res = pl[res].advanced.num;
+            }
+        }
+        Debug.Log(res);
+        return ret.pattern;
     }
 }

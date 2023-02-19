@@ -32,7 +32,10 @@ MonoBehaviour:
   - 1.5
   - 1.5
   damageStopPattern: 010101
-  parryStopPattern: 010101
-  preAttackSprites: []
-  attackSprites: []
+  preAttackSprites:
+  - {fileID: -859417737, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  attackSprites:
+  - {fileID: 818689801, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: -266008720, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: 818689801, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   attackDamage: 0a0000000a0000000a000000

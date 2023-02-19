@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using DG.Tweening;
 using Attacktype = Pattern.AttackType;
+using UnityEngine.SceneManagement;
 
 public class PlayerBehaviour : MonoBehaviour
 {
@@ -42,7 +43,6 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float QTEDashTime; //QTE 대시 시간
     [SerializeField] float zoomMaxTime; //zoom max 시간
 
-    
     [SerializeField] GameObject attackRange;
     
     [SerializeField] Boss1Behaviour boss;
@@ -52,6 +52,12 @@ public class PlayerBehaviour : MonoBehaviour
     
     [SerializeField] GameObject parryEffect; // parry 했을 때 이펙트
     [SerializeField] GameObject blueObject; // blue parry 했을 때 object
+    
+    //blue object 관련 값들
+    [SerializeField] float boFloatDistanceY;
+    [SerializeField] float boFloatDistanceX;
+    [SerializeField] float boTime;
+    [SerializeField] float boTime2;
 
     //건드리면 안됨
     float lastGuardTime; //Player가 마지막으로 가드를 끝낸 시간
@@ -117,6 +123,10 @@ public class PlayerBehaviour : MonoBehaviour
             EndZoom();
             playerstate = PlayerState.Idle;
         }
+
+        if(Input.GetKeyDown(KeyCode.F1)){
+            SceneManager.LoadScene("MainMenu");
+        }
     }
 
     void PlayerControl()
@@ -157,7 +167,7 @@ public class PlayerBehaviour : MonoBehaviour
         if (Input.GetKey(KeyCode.W)) moveDirection.y = 1;
         else if (Input.GetKey(KeyCode.S)) moveDirection.y = -1;
 
-        if (Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.Space))
         {
             if (playerstate == PlayerState.Idle && (moveDirection.x != 0 || moveDirection.y != 0) && lastRollTime + playerRollCooltime < Time.time && playerStamina > 0.95f)
             {
@@ -165,7 +175,7 @@ public class PlayerBehaviour : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyUp(KeyCode.LeftShift))
+        if (Input.GetKeyUp(KeyCode.LeftShift) || Input.GetKeyUp(KeyCode.Space))
         {
             if (playerstate == PlayerState.Running) playerstate = PlayerState.Idle;
         }
@@ -184,8 +194,6 @@ public class PlayerBehaviour : MonoBehaviour
         mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
         float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
         attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
-
-
     }
 
     IEnumerator Rolling(Vector2 v)
@@ -200,7 +208,7 @@ public class PlayerBehaviour : MonoBehaviour
             yield return new WaitForFixedUpdate();
         }
         if(playerstate == PlayerState.Roll){
-            if (Input.GetKey(KeyCode.LeftShift)) playerstate = PlayerState.Running;
+            if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.Space)) playerstate = PlayerState.Running;
             else playerstate = PlayerState.Idle;
         }
         rollDirection = Vector2.zero;
@@ -241,37 +249,15 @@ public class PlayerBehaviour : MonoBehaviour
                 boss.Damaged();
             }
             transform.DOKill(false);
-            transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.2f).OnComplete(() => {
+            transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.4f).OnComplete(() => {
                 if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
             });
         }
     }
-
-    public float boDistance;
-    
-    public float boAngle;
-    
-    public void InstantiateBlueObject(Vector3 pos, Vector3 mouseV){
-        GameObject bo = Instantiate(blueObject, pos, Quaternion.identity);
-        Transform mask = bo.transform.GetChild(0);
-        SpriteRenderer sr = bo.GetComponent<SpriteRenderer>();
-        float delta = Random.Range(-boAngle, boAngle) * Mathf.Deg2Rad;
-        Vector3 d = mouseVec.normalized * boDistance;
-        Vector3 rotated = new Vector2(d.x *  Mathf.Cos(delta) - d.y * Mathf.Sin(delta), d.x * Mathf.Sin(delta) + d.y * Mathf.Cos(delta));
-        float angle = Vector2.SignedAngle(Vector2.down, rotated);
-        bo.transform.rotation = Quaternion.Euler(0,0,angle);
-
-        bo.transform.DOMove(pos + rotated, 0.15f).OnComplete(() => {
-            mask.DOLocalMove(new Vector3(mask.localPosition.x , -3.8f, 0f), 0.05f);
-            sr.DOFade(0f, boTime);
-        });
-        GameObject.Destroy(bo, boTime + 2f);
+    public GameObject InstantiateParryEffect(Vector3 v){
+        return Instantiate(parryEffect, v, Quaternion.identity);
     }
 
-    public float boFloatDistanceY;
-    public float boFloatDistanceX;
-    public float boTime;
-    public float boTime2;
     public void InstantiateBlueObject2(Vector3 pos, Vector3 bAttackDirection){
         GameObject bo = Instantiate(blueObject, pos, Quaternion.identity);
         Transform mask = bo.transform.GetChild(0);
@@ -385,7 +371,6 @@ public class PlayerBehaviour : MonoBehaviour
             GameManager.Instance.CameraSetting.SmoothEndZoom();
             zoomed = false;
             boss.SkipQTE();
-            Debug.Log("pb endzoom");
         }
     }
 
@@ -434,14 +419,19 @@ public class PlayerBehaviour : MonoBehaviour
         playerHealth -= damage;
     }
 
-    //가드또는 패링했을때의 넉백
+    //가드또는 패링했을때의 넉백, attack 했을 때의 넉백도 있음
     public void GuardKnuckback(Vector3 vec, float knuckback = -1f){
         float f = knuckback;
         if (f < 0) {
             f = knuckbackSmall;
         }
-        transform.DOMove(transform.position + vec * f, 0.1f).SetEase(Ease.OutCubic);
+        transform.DOKill(false);
+        transform.DOMove(transform.position + vec * f, 0.1f).SetEase(Ease.OutCubic).OnComplete(() => {
+            if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
+        });
     }
+
+
 
     public int GetPlayerHP(){
         return playerHealth;

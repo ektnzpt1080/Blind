@@ -161,7 +161,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 4
-  m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
+  m_Sprite: {fileID: 2022059543, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -200,7 +200,7 @@ MonoBehaviour:
   border: {x: 14, y: 6}
   player: {fileID: 0}
   footPrintObject: {fileID: 1857504948, guid: 495574eb146e3b54d900e04a3035e554, type: 3}
-  afterimage: {fileID: 7059040628164786613, guid: d02c5f50e665fd347891e48c03accb4b, type: 3}
+  afterimage: {fileID: 7059040628164786619, guid: d02c5f50e665fd347891e48c03accb4b, type: 3}
   preattackEffectW: {fileID: 3737505982307875082, guid: 4a197e7b294d79d46a05f52a01d30709, type: 3}
   preattackEffectR: {fileID: 3737505982307875082, guid: cda9806c40957e343a717d85ea4b2aff, type: 3}
   preattackEffectB: {fileID: 3737505982307875082, guid: 00cb17150505a434f94d0c9ca8a0ebf6, type: 3}
@@ -212,7 +212,15 @@ MonoBehaviour:
   footprintCoolTime: 0.5
   footprintTime: 1
   defenselessTime: 1.8
-  bossStaminaMax: 100
+  bossStaminaMax: 50
+  streakTime: 5
+  backStepSpeed: 3.3
+  backStepTime: 0.6
+  bossHPMax: 300
+  hitEffect: {fileID: 6175973443625431559, guid: a7c9f57739ef71d47ab27dfe286969ab, type: 3}
+  damageSprite: {fileID: 21300000, guid: ce6328ff01cc5a743b721c9c3bebd638, type: 3}
+  guardSprite: {fileID: 5218063, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  streak: 0
 --- !u!50 &1850559989
 Rigidbody2D:
   serializedVersion: 4
@@ -262,3 +270,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8ab3195b4aee0747a5fda76ff7f5275, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  b1b: {fileID: 0}
+  lastPatternNum: 0
+  isAdvanced: 0

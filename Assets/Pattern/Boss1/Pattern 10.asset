@@ -36,6 +36,11 @@ MonoBehaviour:
   - 0
   - 0
   damageStopPattern: 010101
-  preAttackSprites: []
-  attackSprites: []
+  preAttackSprites:
+  - {fileID: 1114791884, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: 736095658, guid: f1ed786ea69c33e4d9c6f4f8d6d31c1b, type: 3}
+  attackSprites:
+  - {fileID: 1266646792, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: 0}
+  - {fileID: -1899957545, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   attackDamage: 0a0000000a0000000a0000000a000000

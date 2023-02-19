@@ -44,3 +44,6 @@ TagManager:
   - name: border
     uniqueID: 1704656463
     locked: 0
+  - name: Effect
+    uniqueID: 744969929
+    locked: 0

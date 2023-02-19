@@ -26,7 +26,7 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] Vector2 border; //Border Vector
     [SerializeField] PlayerBehaviour player; //Player
     [SerializeField] BanishingObject footPrintObject; //Boss 발자국
-    [SerializeField] GameObject afterimage; // 잔상
+    [SerializeField] SpriteRenderer afterimage; // 잔상
     [SerializeField] GameObject preattackEffectW; // 공격전 이펙트 W
     [SerializeField] GameObject preattackEffectR; // 공격전 이펙트 R
     [SerializeField] GameObject preattackEffectB; // 공격전 이펙트 B
@@ -43,14 +43,17 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] float backStepSpeed; // backstep 속도
     [SerializeField] float backStepTime; // backstep 속도
     [SerializeField] int bossHPMax; // backstep 속도
-    
+    [SerializeField] GameObject hitEffect; // HitEffect
+    [SerializeField] Sprite damageSprite;
+    [SerializeField] Sprite guardSprite;
+
     bool isDamageStopPattern; // 현재 진행중인 Pattern이 데미지 받으면 패턴이 종료되는 지
     bool isParryStopPattern; // 현재 진행중인 pattern이 패링으로 QTE모드를 발동시키는 지
     bool footprintEnable; //Boss Footprint 출력 여부
     Vector2 footprintDirection; //Footprint 방향
     int bossHP; // Boss HP
     int bossStamina; // boss의 스태미나 (QTE)
-    int streak = 0; // 당하고 있는 연속공격 수
+    public int streak; // 당하고 있는 연속공격 수
     float lastDamaged;
     SpriteRenderer sr; //spriterenderer
 
@@ -61,17 +64,17 @@ public class Boss1Behaviour : MonoBehaviour
     private void Awake() {
         b1pe = GetComponent<boss1PatternExtracter>();
         b1pe.StartPatternList(this);
-        b1pe.patternList.Add(new PatternLink("Pattern0"));
-        b1pe.patternList.Add(new PatternLink("Pattern1"));
-        b1pe.patternList.Add(new PatternLink("Pattern2"));
-        b1pe.patternList.Add(new PatternLink("Pattern3"));
-        b1pe.patternList.Add(new PatternLink("Pattern4", 1f));
-        b1pe.patternList.Add(new PatternLink("Pattern5", true));
-        b1pe.patternList.Add(new PatternLink("Pattern6", true));
-        b1pe.patternList.Add(new PatternLink("Pattern7"));
-        b1pe.patternList.Add(new PatternLink("Pattern8", false, true));
-        b1pe.patternList[2].advanced = (new PatternLink("Pattern9", false, true));
-        b1pe.patternList[4].advanced = (new PatternLink("Pattern10", false, true));
+        b1pe.patternList.Add(new PatternLink("Pattern0", 0));
+        b1pe.patternList.Add(new PatternLink("Pattern1", 1));
+        b1pe.patternList.Add(new PatternLink("Pattern2", 2));
+        b1pe.patternList.Add(new PatternLink("Pattern3", 3));
+        b1pe.patternList.Add(new PatternLink("Pattern4", 4, 1f));
+        b1pe.patternList.Add(new PatternLink("Pattern5", 5, true));
+        b1pe.patternList.Add(new PatternLink("Pattern6", 6, true));
+        b1pe.patternList.Add(new PatternLink("Pattern7", 7));
+        b1pe.patternList.Add(new PatternLink("Pattern8", 8, false, true));
+        b1pe.patternList[2].advanced = (new PatternLink("Pattern9", 9, false, true));
+        b1pe.patternList[4].advanced = (new PatternLink("Pattern10", 10, false, true));
         //b1pe.patternList.Add(new PatternLink("Pattern0"));
 
         b1pe.PreparePatterns();
@@ -87,6 +90,7 @@ public class Boss1Behaviour : MonoBehaviour
         bossHP = bossHPMax;
         bossStamina = bossStaminaMax;
         lastDamaged = Time.time;
+        streak = 0;
     }
 
     // Update is called once per frame
@@ -99,23 +103,24 @@ public class Boss1Behaviour : MonoBehaviour
                 StartCoroutine(Walk());
             }
         }
-        
+ 
+        float x = Mathf.Clamp(transform.position.x, -border.x, border.x);
+        float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
+        transform.position = new Vector3(x,y,0);
+
+        if(streak != 0 && Time.time > lastDamaged + streakTime) streak = 0;
+
+        /*        
         if(Input.GetKeyDown(KeyCode.X)){
             debugColor = !debugColor;
             Color tmp = sr.color;
             tmp.a = 1 - tmp.a;
             sr.color = tmp;
         }
-        
-        float x = Mathf.Clamp(transform.position.x, -border.x, border.x);
-        float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
-        transform.position = new Vector3(x,y,0);
-
         if(debugColor){
             EnemyColor();
         }
-
-        if(streak != 0 && Time.time > lastDamaged + streakTime) streak = 0;
+*/       
     }
 
     IEnumerator FootPrint(){
@@ -174,7 +179,7 @@ public class Boss1Behaviour : MonoBehaviour
         FootprintEnable(true);
         enemystate = EnemyState.Defensive;
         float walkStartTime = Time.time;
-
+        
         while(true){
             Vector3 v;
             Vector3 v1 = Vector3.Cross(transform.position - player.transform.position, Vector3.forward * 1);
@@ -186,7 +191,7 @@ public class Boss1Behaviour : MonoBehaviour
             
             if(Time.time - walkStartTime > walkToPatternTime) {
                 StartCoroutine(Chase());
-                break;
+                yield break;
             }
             else {
                 footprintDirection = v;
@@ -221,51 +226,19 @@ public class Boss1Behaviour : MonoBehaviour
         enemystate = EnemyState.BackStep;
         FootprintEnable(true);
         float t = Time.time;
-        Vector3 v = VectorBtoP();
+        Vector3 v = -VectorBtoP();
         while(t > Time.time - backStepTime){
             footprintDirection = v;
-            transform.Translate(new Vector3(-v.x, -v.y, 0).normalized * backStepSpeed * Time.deltaTime);
+            transform.Translate(new Vector3(v.x, v.y, 0).normalized * backStepSpeed * Time.deltaTime);
             yield return new WaitForFixedUpdate();
         }
+        
         StartCoroutine(Chase());
     }
 
     void StartPattern( string s){
         enemystate = EnemyState.SuperArmor;
         StartCoroutine(s);
-    }
-
-    GameObject MakePreAttackEffect( Attacktype type){
-        if(type == Attacktype.white){
-            return Instantiate(preattackEffectW, transform.position, Quaternion.identity);
-        }
-        else if(type == Attacktype.red){
-            return Instantiate(preattackEffectR, transform.position, Quaternion.identity);
-        }
-        else if(type == Attacktype.blue){
-            return Instantiate(preattackEffectB, transform.position, Quaternion.identity);
-        }
-        else return null;
-    }
-
-    //나중에 attacksprite 받게 할 것
-    void MakeAttackSprite(){
-        GameObject attackSprite = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        attackSprite.GetComponent<SpriteRenderer>().DOFade(0, 1.7f).SetEase(Ease.InQuint).OnComplete(() => {
-            Destroy(attackSprite);
-        });
-    }
-
-    GameObject MakeDamagedSprite(){
-        GameObject damagedSprite = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        damagedSprite.GetComponent<SpriteRenderer>().DOFade(0, 0.8f).SetEase(Ease.InQuint).OnComplete(() => {
-            Destroy(damagedSprite);
-        });
-        return damagedSprite;
     }
        
     public void FootprintEnable(bool tf){
@@ -297,8 +270,6 @@ public class Boss1Behaviour : MonoBehaviour
         if(playerDamaged) {
             StartCoroutine(CeaseAndWalk(1.1f));
         }
-        
-
     }
 
     IEnumerator CeaseAndWalk(float f){
@@ -307,19 +278,41 @@ public class Boss1Behaviour : MonoBehaviour
     }
 
     GameObject lastSpecialDamagedOne;
+    public void Damaged(int damage){
+        Damaged(false, damage);
+    }
     public void Damaged(bool QTEsuccess = false, int damage = 10){
         if(enemystate == EnemyState.Defenseless){
             if(streak > 1){
                 float r = Random.Range(0f, Mathf.Pow(2,streak-1));
                 if (r < 1){
-                    bossHP -= 10;
+                    bossHP -= damage;
                     streak += 1;
-                    // TODO 넉백도 추가할 것
+                    GameObject md = MakeDamagedSprite(false);
+                    transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
+                    md.transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
+                    defenselessTime = Time.time;
+                    lastDamaged = Time.time;
                 }
                 else {
-                    enemystate = EnemyState.Defensive;
-                    Damaged();
+                    GameObject md = MakeDamagedSprite(true);
+                    md.transform.DOMove(VectorBtoP().normalized * -1.7f, 0.2f).SetRelative();
+                    transform.DOMove(VectorBtoP().normalized * -1.7f, 0.2f).SetRelative().OnComplete(() => {
+                        int i = Random.Range(0,2);
+                        if(i == 0) StartCoroutine(Chase());
+                        else StartCoroutine(BackStep());
+                    });
+                    
                 }
+            }
+            else{
+                bossHP -= damage;
+                streak += 1;
+                transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative().SetDelay(0.2f);
+                GameObject md = MakeDamagedSprite(false);
+                md.transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
+                defenselessTime = Time.time;
+                lastDamaged = Time.time;
             }
         }
         else if(enemystate == EnemyState.QTEEnable){
@@ -328,31 +321,41 @@ public class Boss1Behaviour : MonoBehaviour
             player.StartQTE();
         }
         else if(enemystate == EnemyState.Special){
-            lastSpecialDamagedOne = MakeDamagedSprite();
+            lastSpecialDamagedOne = MakeDamagedSprite(!QTEsuccess);
             transform.DOKill(false);
             transform.DOMove(transform.position + -VectorBtoP().normalized * 1.2f, 0.2f);
-            if(QTEsuccess) bossHP -= 10;
+            if(QTEsuccess) {
+                bossHP -= damage;
+                GameObject he = Instantiate(hitEffect, lastSpecialDamagedOne.transform);
+                if(VectorBtoP().x > 0){
+                    Vector3 temp = he.transform.localScale;
+                    temp.x = -temp.x;
+                    he.transform.localScale = temp;
+                    temp = he.transform.localPosition;
+                    temp.x = -temp.x;
+                    he.transform.localPosition = temp;
+                }
+            }
         }
         else if(enemystate == EnemyState.SuperArmor){
-            bossHP -= 10;
+            bossHP -= damage * 2 / 3;
         }
         else if(enemystate == EnemyState.Defensive){
+            //stamina 데미지?
             CeasePattern();
+            enemystate = EnemyState.SuperArmor;
+            GameObject md = MakeDamagedSprite(true);
+            player.InstantiateParryEffect(transform.position + VectorBtoP().normalized * 0.5f);
+            md.transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
             transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative().SetDelay(0.2f).OnComplete(() => {
                 int i = Random.Range(0,2);
                 if(i == 0) StartCoroutine(Chase());
                 else StartCoroutine(BackStep());
             });
-            
-            // 뭔가 효과 있으면 좋을 듯?
-            
 
         }
 
         if(bossHP < bossHPMax/2) b1pe.Advanced();
-    }
-    public void Damaged(int damage){
-        Damaged(false, damage);
     }
 
     IEnumerator ParticleDestruct(){
@@ -362,7 +365,7 @@ public class Boss1Behaviour : MonoBehaviour
     IEnumerator AfterimageDestruct(){
         yield return new WaitForFixedUpdate();
         GameManager.Instance.DestructAfterimage.Invoke();
-        MakeDamagedSprite();
+        MakeDamagedSprite(false);
     }
 
     public void StaminaDamaged(int damage = 10, bool red = false){
@@ -401,7 +404,53 @@ public class Boss1Behaviour : MonoBehaviour
         }
     }
     
+    GameObject MakePreAttackEffect( Attacktype type){
+        if(type == Attacktype.white){
+            return Instantiate(preattackEffectW, transform.position, Quaternion.identity);
+        }
+        else if(type == Attacktype.red){
+            return Instantiate(preattackEffectR, transform.position, Quaternion.identity);
+        }
+        else if(type == Attacktype.blue){
+            return Instantiate(preattackEffectB, transform.position, Quaternion.identity);
+        }
+        else return null;
+    }
 
+    GameObject MakePreAattackSprite(Sprite sprite, float f = -1){
+        SpriteRenderer image = Instantiate(afterimage, InsideFenceTransform(transform.position), Quaternion.identity);
+        image.sprite = sprite;
+        if(VectorBtoP().x < 0) image.flipX = true;
+        if(f > 0) StartCoroutine(DestoryAfterimage(image.gameObject, f));
+        return image.gameObject;
+    }
+
+    void MakeAttackSprite(Sprite sprite, bool inverseFlip = false){
+        SpriteRenderer attackSprite = Instantiate(afterimage, InsideFenceTransform(transform.position), Quaternion.identity);
+        attackSprite.sprite = sprite;
+        if( (VectorBtoP().x < 0 && !inverseFlip) || (VectorBtoP().x > 0 && inverseFlip) ) attackSprite.flipX = true;
+        
+        attackSprite.GetComponent<SpriteRenderer>().DOFade(0, 1.7f).SetEase(Ease.InQuint).OnComplete(() => {
+            Destroy(attackSprite.gameObject);
+        });
+    }
+
+    GameObject MakeDamagedSprite(bool isGuard){
+        SpriteRenderer dSprite = Instantiate(afterimage, InsideFenceTransform(transform.position), Quaternion.identity);
+        if(isGuard) dSprite.sprite = guardSprite;
+        else dSprite.sprite = damageSprite;
+        if(VectorBtoP().x < 0) dSprite.flipX = true;
+        dSprite.GetComponent<SpriteRenderer>().DOFade(0, 0.8f).SetEase(Ease.InQuint).OnComplete(() => {
+            Destroy(dSprite.gameObject);
+        });
+        return dSprite.gameObject;
+    }
+
+    Vector3 InsideFenceTransform(Vector3 v){
+        float x = Mathf.Clamp(v.x, -border.x, border.x);
+        float y = Mathf.Clamp(v.y, -border.y, border.y);
+        return new Vector3(x,y,0);
+    }
 
     // boss가 player에게 최대 max distance만큼 돌진 후 attackdistance만큼 attacktype으로 공격, 
     // proper distance만큼 돌진하려고 함, proper distance보다 가까우면 현재 자리에서 시전
@@ -434,12 +483,7 @@ public class Boss1Behaviour : MonoBehaviour
         Pattern pattern = boss1PatternList[0];
         int i;
         int maxAttack = 3;
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0]));
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
 
         for(i = 0 ; i < maxAttack; i++){
             isDamageStopPattern = pattern.damageStopPattern[i];
@@ -448,7 +492,7 @@ public class Boss1Behaviour : MonoBehaviour
             yield return new WaitForSeconds(pattern.stanbyTime[i]);
             
             AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-            MakeAttackSprite();
+            MakeAttackSprite(pattern.attackSprites[i]);
         }
 
         DefenselessStart();
@@ -458,13 +502,10 @@ public class Boss1Behaviour : MonoBehaviour
     IEnumerator Pattern1(){
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[1];
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
         int i;
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-
         i = 0;
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0] + 0.2f));        
+        
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.2f);
         
         isDamageStopPattern = pattern.damageStopPattern[0];
 
@@ -474,21 +515,21 @@ public class Boss1Behaviour : MonoBehaviour
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
         i = 1;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 2;
         MakePreAttackEffect(pattern.attacktype[2]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
-        DefenselessStart();
+        StartCoroutine(BackStep());
     }
 
     // 1 - 2 흰흰 - 흰흰 - 흰
@@ -498,10 +539,8 @@ public class Boss1Behaviour : MonoBehaviour
         int i;
         
         i = 0;
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[i] + 0.2f));        
+        
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.2f);
     
         MakePreAttackEffect(pattern.attacktype[0]);
         yield return new WaitForSeconds(0.2f);
@@ -509,12 +548,12 @@ public class Boss1Behaviour : MonoBehaviour
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 1;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
         i = 2;
         MakePreAttackEffect(pattern.attacktype[2]);
@@ -523,19 +562,19 @@ public class Boss1Behaviour : MonoBehaviour
         
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 3;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 4;
         MakePreAttackEffect(pattern.attacktype[4]);                
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
         DefenselessStart();
     }
@@ -546,13 +585,9 @@ public class Boss1Behaviour : MonoBehaviour
         Pattern pattern = boss1PatternList[3];
         int i;
         int maxAttack = 2;
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
         
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
 
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0]));
-        
         for(i = 0 ; i < maxAttack; i++){
             isDamageStopPattern = pattern.damageStopPattern[i];
 
@@ -560,10 +595,10 @@ public class Boss1Behaviour : MonoBehaviour
             yield return new WaitForSeconds(pattern.stanbyTime[i]);
             
             AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-            MakeAttackSprite();
+            MakeAttackSprite(pattern.attackSprites[i]);
         }
 
-        DefenselessStart();
+        StartCoroutine(Chase());
     }
 
     // 4 흰 - 옆으로 돌아서 흰
@@ -573,17 +608,13 @@ public class Boss1Behaviour : MonoBehaviour
         int i;
         
         i = 0;
-        GameObject image0 = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = image0.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image0, pattern.stanbyTime[i]));
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
 
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
-        
         AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i], true);
         
         i = 1;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
@@ -599,18 +630,16 @@ public class Boss1Behaviour : MonoBehaviour
         transform.position = moveposition;
         
         i = 2;
-        GameObject image1 = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = image1.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image1, pattern.stanbyTime[i]));
+        
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[i]);
         
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
         AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i], true);
         
-        DefenselessStart();
+        StartCoroutine(ShortWalk());
     }
 
     // 5 돌진 - (빨강 공격) (멀리서 공격)
@@ -620,16 +649,14 @@ public class Boss1Behaviour : MonoBehaviour
         Pattern pattern = boss1PatternList[5];
         
         i = 0;
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0]));
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
+        
         MakePreAttackEffect(pattern.attacktype[i]);
 
         yield return new WaitForSeconds(pattern.stanbyTime[0]);
         
         AttackPattern2(pattern.maxDashDistance[0], pattern.attacktype[0], pattern.attackDamage[0]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i], true);
         DefenselessStart();
     }
     
@@ -637,15 +664,12 @@ public class Boss1Behaviour : MonoBehaviour
     IEnumerator Pattern6(){
         Pattern pattern = boss1PatternList[6];
         int i;
-        
+        i = 0;
         float original_fpct = footprintCoolTime;
         footprintCoolTime = 0.15f;
         
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        i = 0;
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[i]));
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
+        
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
@@ -660,16 +684,16 @@ public class Boss1Behaviour : MonoBehaviour
         footprintCoolTime = original_fpct;
         
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 1;
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
-        DefenselessStart();
+        StartCoroutine(BackStep());
     }
  
     // 7 흰흰흰 (빠르게)
@@ -679,32 +703,28 @@ public class Boss1Behaviour : MonoBehaviour
         int i;
         
         i = 0;
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[0] + 0.4f));        
         
-        isDamageStopPattern = pattern.damageStopPattern[0];
-
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.6f);
+        
         MakePreAttackEffect(pattern.attacktype[0]);
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.3f);
         MakePreAttackEffect(pattern.attacktype[1]);
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.3f);
         MakePreAttackEffect(pattern.attacktype[2]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
         i = 1;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 2;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
         DefenselessStart();
     }
@@ -714,9 +734,8 @@ public class Boss1Behaviour : MonoBehaviour
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[8];
         
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
+        GameObject image = MakePreAattackSprite(pattern.preAttackSprites[0]);
+
         GameObject effect = MakePreAttackEffect(pattern.attacktype[0]);
 
         Vector3 v = transform.position - VectorBtoP().normalized * pattern.maxDashDistance[0];
@@ -728,7 +747,7 @@ public class Boss1Behaviour : MonoBehaviour
         yield return new WaitForSeconds(pattern.stanbyTime[0] * 3/4);
         
         player.AttackedBlue(transform.position, player.transform.position, pattern.attackDamage[0], 0.3f);
-        DefenselessStart();
+        StartCoroutine(ShortWalk());
     }
     
     // 9 흰흰-흰흰-빨 (2 강화) 
@@ -738,23 +757,20 @@ public class Boss1Behaviour : MonoBehaviour
         int i;
         
         i = 0;
-        GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = afterimage.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[i] + 0.2f));        
-    
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.2f);
+
         MakePreAttackEffect(pattern.attacktype[0]);
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[1]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 1;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
 
         i = 2;
         MakePreAttackEffect(pattern.attacktype[2]);
@@ -763,19 +779,19 @@ public class Boss1Behaviour : MonoBehaviour
         
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 3;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i]);
         
         i = 4;
         MakePreAttackEffect(pattern.attacktype[4]);                
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
         AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i], true);
 
         DefenselessStart();
     }
@@ -788,16 +804,13 @@ public class Boss1Behaviour : MonoBehaviour
         int i;
         
         i = 0;
-        GameObject image0 = Instantiate(afterimage, transform.position, Quaternion.identity);
-        // SpriteRenderer aiSR = image0.GetComponent<SpriteRenderer>();
-        // aiSR.sprite = pattern.preAttackSprites[0]
-        StartCoroutine(DestoryAfterimage(image0, pattern.stanbyTime[i]));
+        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
 
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         
         AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite();
+        MakeAttackSprite(pattern.attackSprites[i], true);
         
         for (int j = 0 ; j < 3; j++){
             i = 1;
@@ -818,23 +831,18 @@ public class Boss1Behaviour : MonoBehaviour
             if (wb == 0 ) {
                 //w
                 i = 2;    
-                GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-                // SpriteRenderer aiSR = image1.GetComponent<SpriteRenderer>();
-                // aiSR.sprite = pattern.preAttackSprites[0]
-                StartCoroutine(DestoryAfterimage(image, pattern.stanbyTime[i]));
+                MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[i]);
         
                 MakePreAttackEffect(pattern.attacktype[i]);
                 yield return new WaitForSeconds(pattern.stanbyTime[i]);
                 
                 AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-                MakeAttackSprite();
+                MakeAttackSprite(pattern.attackSprites[i], true);
             }
             else{
                 //b
                 i = 3;
-                GameObject image = Instantiate(afterimage, transform.position, Quaternion.identity);
-                // SpriteRenderer aiSR = image1.GetComponent<SpriteRenderer>();
-                // aiSR.sprite = pattern.preAttackSprites[0]
+                GameObject image = MakePreAattackSprite(pattern.preAttackSprites[1]);
                 GameObject effect = MakePreAttackEffect(pattern.attacktype[i]);
                 Vector3 v = transform.position - VectorBtoP().normalized * pattern.maxDashDistance[i];
                 image.transform.DOMove(v, pattern.stanbyTime[i] - 0.05f).SetEase(Ease.OutSine).OnComplete(() => {
@@ -848,7 +856,7 @@ public class Boss1Behaviour : MonoBehaviour
                 
             }
         }
-        DefenselessStart();
+        StartCoroutine(ShortWalk());
     }
     public int GetBossHP(){
         return bossHP;

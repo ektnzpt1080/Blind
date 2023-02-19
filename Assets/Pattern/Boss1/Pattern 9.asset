@@ -18,9 +18,9 @@ MonoBehaviour:
   stanbyTime:
   - 0.8
   - 0.2
-  - 0.6
+  - 0.8
   - 0.2
-  - 0.5
+  - 0.8
   attackDistance:
   - 2
   - 2
@@ -40,6 +40,12 @@ MonoBehaviour:
   - 0.2
   - 0
   damageStopPattern: 0101010101
-  preAttackSprites: []
-  attackSprites: []
+  preAttackSprites:
+  - {fileID: -859417737, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  attackSprites:
+  - {fileID: 818689801, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: -859417737, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: 818689801, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: -859417737, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  - {fileID: -1899957545, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   attackDamage: 0a0000000a0000000a0000000a0000000a000000

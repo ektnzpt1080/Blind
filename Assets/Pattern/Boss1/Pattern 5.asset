@@ -16,7 +16,7 @@ MonoBehaviour:
   attacktype: 01000000
   startDistance: 4.5
   stanbyTime:
-  - 0.8
+  - 0.9
   attackDistance:
   - 0
   maxDashDistance:
@@ -24,7 +24,8 @@ MonoBehaviour:
   properDashDistance:
   - 0
   damageStopPattern: 01
-  parryStopPattern: 01
-  preAttackSprites: []
-  attackSprites: []
+  preAttackSprites:
+  - {fileID: 1114791884, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
+  attackSprites:
+  - {fileID: 1266646792, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   attackDamage: 0a000000
