@@ -31,8 +31,6 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float playerRunningSpeed; //Player 달리기 속도
     [SerializeField] float playerRunningStaminaSpendingSpeed; //Player 달리기 스태미나 소비 속도
     [SerializeField] float playerStaminaMax = 4.0f; //Player 스태미나 Max
-    [SerializeField] float parryDurationMax = 30 / 60f; //Player 패링 시간 Max
-    [SerializeField] float parryDurationMin = 7 / 60f; //Player 패링 시간 Min
     [SerializeField] int playerHealth = 100; //Player 체력
     [SerializeField] float knuckbackSmall = 0.2f; // 넉백 거리 (작음, 가드, 패리 성공)
     [SerializeField] float knuckbackBig = 1.0f; // 넉백 거리 (큼, 데미지 당함)
@@ -41,6 +39,7 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float QTEDashDistance; //QTE 대시 거리
     [SerializeField] float QTEDashTime; //QTE 대시 시간
     [SerializeField] float zoomMaxTime; //zoom max 시간
+    [SerializeField] float parryCoolTime; // 패리 정상화 시간
 
     [SerializeField] GameObject attackRange;
     
@@ -51,6 +50,8 @@ public class PlayerBehaviour : MonoBehaviour
     
     [SerializeField] GameObject parryEffect; // parry 했을 때 이펙트
     [SerializeField] GameObject blueObject; // blue parry 했을 때 object
+    [SerializeField] GameObject chargeAttackComplete; // 차지가 완료될 때 이펙트
+    [SerializeField] GameObject chargeAttackEffect; // 차지가 시작할 때 이펙트
     
     //blue object 관련 값들
     [SerializeField] float boFloatDistanceY;
@@ -59,10 +60,8 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float boTime2;
 
     //건드리면 안됨
-    float lastGuardTime; //Player가 마지막으로 가드를 끝낸 시간
     float lastRollTime; //Player가 마지막으로 구르기를 한 시간
     float lastStaminaSpendTime; //Player가 마지막으로 구르거나 달린 시간 (스태미나 회복용)
-    float parryDuration; //Player 현재 패링 시간
     float guardTime; //Player가 가드하고 있는 시간
     float playerStamina; //Player 스태미나
     [SerializeField] PlayerState playerstate; //PlayerState
@@ -70,7 +69,9 @@ public class PlayerBehaviour : MonoBehaviour
     Vector2 rollDirection; // 롤 방향 평소엔 영벡터
     bool parryable; //패리 가능 상태
     float lastParryTime; // 마지막으로 패리가 된 상태
-    [SerializeField] List<Attack> attackList;
+    List<Attack> attackList;
+    [SerializeField] float guardGauge;
+    [SerializeField] float attackGauge;
 
     Camera mainCamera;
     SpriteRenderer sr;
@@ -91,6 +92,7 @@ public class PlayerBehaviour : MonoBehaviour
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
         guardTime = 0;
+        guardGauge = 2.05f;
         lastRollTime = Time.time;
         lastParryTime = Time.time;
 
@@ -101,16 +103,16 @@ public class PlayerBehaviour : MonoBehaviour
     }
 
 
-    [SerializeField] float parryableTime;
     // Update is called once per frame
     void Update()
     {
+        //움직임, 공격, 방어 등등
         PlayerControl();
-        
+
         //패링 회복 관련
         if (!parryable)
         {
-            if (lastParryTime + parryableTime < Time.time) ParryNormalize();
+            if (lastParryTime + parryCoolTime < Time.time) ParryNormalize();
         }
 
         //스태미나 관련
@@ -128,6 +130,7 @@ public class PlayerBehaviour : MonoBehaviour
         //공격 판정
         AttackProcess();
         
+        //줌 끝날때
         if(zoomed && zoomedTime + zoomMaxTime < Time.time) {
             EndZoom();
             playerstate = PlayerState.Idle;
@@ -140,14 +143,35 @@ public class PlayerBehaviour : MonoBehaviour
         PlayerColor();
     }
 
+
+    bool chargeComplete = false;
+
     void PlayerControl()
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (AttackAvailiableState()) {
-                Attack();
-                EndZoom();
+            Attack();
+            EndZoom();
+            
+        }
+        else if (Input.GetMouseButton(0)){
+            if(playerstate == PlayerState.Attack){
+                attackGauge += Time.deltaTime / 1.2f;
+                if(attackGauge > guardGauge) attackGauge = guardGauge;
+                if(attackGauge > 1f && !chargeComplete) {
+                    chargeComplete = true;
+                    Instantiate(chargeAttackComplete, this.transform);
+                }
             }
+        }
+        else if(Input.GetMouseButtonUp(0)){
+            GameManager.Instance.DestructChargeParticles.Invoke();
+            if(guardGauge > 1f && attackGauge > 1f) {
+                guardGauge -= 1;
+                playerstate = PlayerState.Idle;
+                AttackDash();
+            } 
+            else if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
         }
         else if (Input.GetMouseButtonDown(1))
         {
@@ -164,10 +188,14 @@ public class PlayerBehaviour : MonoBehaviour
         }
         else if (Input.GetMouseButtonUp(1))
         {
-            if (playerstate == PlayerState.Guard)
-            {
-                playerstate = PlayerState.Idle;
-            }
+            if (playerstate == PlayerState.Guard) playerstate = PlayerState.Idle;
+        }
+
+        //attackGauge 초기화
+        if(playerstate != PlayerState.Attack) {
+            attackGauge = 0;
+            chargeComplete = false;
+
         }
 
         moveDirection = Vector2.zero;
@@ -199,10 +227,38 @@ public class PlayerBehaviour : MonoBehaviour
             playerStamina -= playerRunningStaminaSpendingSpeed * Time.deltaTime;
             if(playerStamina < 0 || (moveDirection.x == 0 && moveDirection.y == 0)) playerstate = PlayerState.Idle;
         }
-
-
     }
 
+    public void Attack(){
+        if(playerstate == PlayerState.OnlyAttack && Vector2.Angle(boss.transform.position - transform.position, mouseVec) < 75){
+            boss.Damaged(25);
+        }
+        else if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
+            attackList.RemoveAt(0);
+            Instantiate(parryEffect, transform.position + V2toV3(mouseVec).normalized * 0.4f, Quaternion.identity);
+            InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
+        }
+        else if(AttackAvailiableState()) {
+            playerstate = PlayerState.Attack;
+            if(guardGauge > 1f) Instantiate(chargeAttackEffect, this.transform);
+        }
+    }
+
+    //공격할 때 나오는 대시
+    public void AttackDash(){
+        ContactFilter2D cf2d = new ContactFilter2D();
+        cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
+        List<Collider2D> res = new List<Collider2D>(); 
+        if(attackCollider.OverlapCollider(cf2d, res) > 0) {
+            boss.Damaged();
+            attackList = new List<Attack>();
+        }
+        transform.DOKill(false);
+        transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.4f).OnComplete(() => {
+            if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
+        });
+    }
+    
     IEnumerator Rolling(Vector2 v)
     {
         rollDirection = v;
@@ -232,6 +288,7 @@ public class PlayerBehaviour : MonoBehaviour
                 boss.StaminaDamaged();
                 boss.NextPattern(false);
                 attackList.RemoveAt(0);
+                guardGauge += 0.23f;
             }
         }
     }
@@ -244,36 +301,12 @@ public class PlayerBehaviour : MonoBehaviour
     public bool AttackAvailiableState()
     {
         return playerstate == PlayerState.Idle || playerstate == PlayerState.Running || 
-            playerstate == PlayerState.Guard || playerstate == PlayerState.OnlyAttack;
+            playerstate == PlayerState.Guard;
     }
 
     public bool DamageAvailiableState(){
         return playerstate == PlayerState.Idle || playerstate == PlayerState.Running || 
             playerstate == PlayerState.Attack;
-    }
-
-    //공격 + 파랑 공격 패링 판정
-    public void Attack(){
-        if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
-            attackList.RemoveAt(0);
-            // TODO : parry 됐을때의 적절한 처리
-
-            Instantiate(parryEffect, transform.position + V2toV3(mouseVec).normalized * 0.4f, Quaternion.identity);
-            InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
-        }
-        else{
-            playerstate = PlayerState.Attack;
-            ContactFilter2D cf2d = new ContactFilter2D();
-            cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
-            List<Collider2D> res = new List<Collider2D>(); 
-            if(attackCollider.OverlapCollider(cf2d, res) > 0) {
-                boss.Damaged();
-            }
-            transform.DOKill(false);
-            transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.4f).OnComplete(() => {
-                if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
-            });
-        }
     }
 
     public GameObject InstantiateParryEffect(Vector3 v){
@@ -309,7 +342,7 @@ public class PlayerBehaviour : MonoBehaviour
         zoomed = false;
         playerstate = PlayerState.QTE;
         int attacknum = num;
-        if(attacknum < 0 ) attacknum = Random.Range(6,9);
+        if(attacknum < 0 ) attacknum = Random.Range(7,9);
         
         boss.transform.position = Vector3.zero + (boss.transform.position - transform.position).normalized * 2.0f;
         transform.position = Vector3.zero;
@@ -348,8 +381,10 @@ public class PlayerBehaviour : MonoBehaviour
     }
 
     public void StartZoom(){
+        playerstate = PlayerState.OnlyAttack;
         zoomed = true;
         zoomedTime = Time.time;
+        attackList = new List<Attack>();
     }
 
     public void EndZoom(){
@@ -383,8 +418,8 @@ public class PlayerBehaviour : MonoBehaviour
                     if((a.startPoint - transform.position).magnitude < a.attackDistance){
                         if (playerstate == PlayerState.Guard && angle < 75) {
                             DamagedSmall(a.damage / 2, a.attackDirection.normalized);
-                            
                             boss.NextPattern(false);
+                            guardGauge += 0.11f;
                         }
                         else if( DamageAvailiableState() ||  playerstate == PlayerState.Guard){
                             DamagedBig(a.damage, a.attackDirection.normalized);
@@ -403,9 +438,7 @@ public class PlayerBehaviour : MonoBehaviour
                     RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, LayerMask.GetMask("Player"));
                         if(hit.collider != null){
                             DamagedBig(a.damage, -a.attackDirection);
-                            boss.NextPattern(true); //보스 쪽에 패턴 멈추라고 신호를 줌
-                            // 맞았다는 신호 + 애니메이션 재생 
-                            // 이건 중간에 하게 만들어야 되나? 일단 만들자
+                            boss.NextPattern(true); 
                         }
                         else{
                             boss.NextPattern(false);
@@ -439,6 +472,7 @@ public class PlayerBehaviour : MonoBehaviour
 
     // 클린 히트했을때
     public void DamagedBig(int damage, Vector3 vec){
+        GameManager.Instance.DestructChargeParticles.Invoke();
         guardTime = 0;
         playerstate = PlayerState.Damaged;
         playerHealth -= damage;

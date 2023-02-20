@@ -11,6 +11,8 @@ public class GameManager : MonoBehaviour
     public CameraSetting CameraSetting;
     public UnityEvent DestructAttackParticles;
     public UnityEvent DestructAfterimage;
+    public UnityEvent DestructChargeParticles;
+    
 
     private void Awake()
     {

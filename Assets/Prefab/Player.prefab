@@ -25,7 +25,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1291138483}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.02, y: 0, z: 0}
   m_LocalScale: {x: 50, y: 50, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -128,7 +128,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 2.198064, y: 0}
+  m_Offset: {x: 1.8627367, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -139,7 +139,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 5.396128, y: 3.5}
+  m_Size: {x: 4.7254734, y: 3.5}
   m_EdgeRadius: 0
 --- !u!1 &1479259209791494895
 GameObject:
@@ -252,8 +252,6 @@ MonoBehaviour:
   playerRunningSpeed: 5.2
   playerRunningStaminaSpendingSpeed: 0.35
   playerStaminaMax: 4
-  parryDurationMax: 0.5
-  parryDurationMin: 0.11666667
   playerHealth: 1000
   knuckbackSmall: 0.25
   knuckbackBig: 1
@@ -262,6 +260,7 @@ MonoBehaviour:
   QTEDashDistance: 2
   QTEDashTime: 0.8
   zoomMaxTime: 0.8
+  parryableTime: 0
   attackRange: {fileID: 1479259208905299878}
   boss: {fileID: 0}
   parryEffect: {fileID: 6860616751186999244, guid: e783ae18aa568684185317c862deb956, type: 3}
@@ -271,6 +270,8 @@ MonoBehaviour:
   boTime: 1.5
   boTime2: 2.5
   playerstate: 0
+  guardGauge: 0
+  attackGauge: 0
 --- !u!114 &1203730617
 MonoBehaviour:
   m_ObjectHideFlags: 0

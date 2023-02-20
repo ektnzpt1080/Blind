@@ -8,14 +8,10 @@ using UnityEngine.Events;
 public class Boss1Behaviour : MonoBehaviour
 {
     enum EnemyState{
-        Start,
-        Defensive,
-        SuperArmor,
-        Defenseless,
+        Idle,
         Special,
         QTEEnable,
         BackStep
-
     }
     
     boss1PatternExtracter b1pe;
@@ -57,6 +53,8 @@ public class Boss1Behaviour : MonoBehaviour
     float lastDamaged;
     SpriteRenderer sr; //spriterenderer
     float footprintCoolTimeOriginal;
+    GameObject lastSpecialDamagedOne;
+
     [SerializeField] bool nextPattern; //다음 패턴을 사용
     [SerializeField] bool playerDamaged; // 플레이어가 데미지를 입음
 
@@ -96,17 +94,13 @@ public class Boss1Behaviour : MonoBehaviour
         StartCoroutine(Walk());
         nextPattern = false;
         playerDamaged = false;
+        alreadyWaiting = false;
+        walkAgain = false;
     }
 
     // Update is called once per frame
     void Update()
-    {     
-        if(Time.time > defenselessTime + 2f){
-            if(enemystate == EnemyState.Defenseless){
-                StartCoroutine(Walk());
-            }
-        }
- 
+    {
         float x = Mathf.Clamp(transform.position.x, -border.x, border.x);
         float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
         transform.position = new Vector3(x,y,0);
@@ -147,8 +141,9 @@ public class Boss1Behaviour : MonoBehaviour
 
     //player와 수직 방향으로 걸음
     IEnumerator Walk(){
+        PatternDamaged = false;
         FootprintEnable(true);
-        enemystate = EnemyState.Defensive;
+        enemystate = EnemyState.Idle;
         
         float walkStartTime = Time.time;
 
@@ -161,12 +156,12 @@ public class Boss1Behaviour : MonoBehaviour
         else direction = -1;
 
         while(true){
+            if(PatternDamaged){
+                PatternDamaged = false;
+                yield break;
+            }
             if(Time.time - walkStartTime > walkMaxTime) {
                 StartCoroutine(Chase());
-                break;
-            }
-            else if(Time.time - walkStartTime > walkToPatternTime && VectorBtoP().magnitude < walkToPatternDistance) {
-                StartPattern(b1pe.ClosePattern(out int i));
                 break;
             }
             else {
@@ -179,11 +174,17 @@ public class Boss1Behaviour : MonoBehaviour
     }
 
     IEnumerator ShortWalk(){
+        PatternDamaged = false;
         FootprintEnable(true);
-        enemystate = EnemyState.Defensive;
+        enemystate = EnemyState.Idle;
         float walkStartTime = Time.time;
         
         while(true){
+            if(PatternDamaged){
+                PatternDamaged = false;
+                yield break;
+            }
+            
             Vector3 v;
             Vector3 v1 = Vector3.Cross(transform.position - player.transform.position, Vector3.forward * 1);
             Vector3 v2 = Vector3.Cross(transform.position - player.transform.position, Vector3.forward * -1);
@@ -205,14 +206,17 @@ public class Boss1Behaviour : MonoBehaviour
     }
 
     IEnumerator Chase(){
+        PatternDamaged = false;
         FootprintEnable(true);
-        enemystate = EnemyState.SuperArmor;
+        enemystate = EnemyState.Idle;
         int i;
         string nextPattern = b1pe.NextPattern(out i);
-
         while(true){
+            if(PatternDamaged){
+                PatternDamaged = false;
+                yield break;
+            }
             if( VectorBtoP().magnitude < boss1PatternList[i].startDistance ){
-            //if(VectorBtoP().magnitude < 15f ){
                 StartCoroutine(nextPattern);
                 break;
             }
@@ -224,24 +228,25 @@ public class Boss1Behaviour : MonoBehaviour
             }
         }
     }    
-
+    [SerializeField] GameObject backStepSprite;
     IEnumerator BackStep(){
+        PatternDamaged = false;
         enemystate = EnemyState.BackStep;
-        FootprintEnable(true);
+        FootprintEnable(false);
+        GameObject go = MakePreAttackSprite(backStepSprite);
         float t = Time.time;
         Vector3 v = -VectorBtoP();
         while(t > Time.time - backStepTime){
+            if(PatternDamaged) {
+                PatternDamaged = false;
+                yield break;
+            }
             footprintDirection = v;
             transform.Translate(new Vector3(v.x, v.y, 0).normalized * backStepSpeed * Time.deltaTime);
             yield return new WaitForFixedUpdate();
         }
         
         StartCoroutine(Chase());
-    }
-
-    void StartPattern( string s){
-        enemystate = EnemyState.SuperArmor;
-        StartCoroutine(s);
     }
        
     public void FootprintEnable(bool tf){
@@ -252,21 +257,14 @@ public class Boss1Behaviour : MonoBehaviour
         return (player.transform.position - transform.position);
     }
 
-    void DefenselessStart(){
-        if(enemystate == EnemyState.QTEEnable){
-            return;
-        }
-        defenselessTime = Time.time;
-        enemystate = EnemyState.Defenseless;
-    }
-
     IEnumerator DestoryAfterimage( GameObject afterimage, float duration){
         yield return new WaitForSeconds(duration);
         if(afterimage != null) Destroy(afterimage);
     }
 
+    
     public void CeasePattern(bool playerDamaged = false){
-        footprintEnable = true;
+        FootprintEnable(true);
         footprintCoolTime = footprintCoolTimeOriginal;
         StartCoroutine(ParticleDestruct());
         //쳐맞음
@@ -274,50 +272,40 @@ public class Boss1Behaviour : MonoBehaviour
             StartCoroutine(CeaseAndWalk(1.1f));
         }
     }
-
+    bool alreadyWaiting;
+    bool walkAgain;
     IEnumerator CeaseAndWalk(float f){
+        if(alreadyWaiting) walkAgain = true;//이미 돌아가는 중
+
+        alreadyWaiting = true;
         yield return new WaitForSeconds(f);
+        if(walkAgain) {
+            walkAgain = false;
+            yield break;
+        }
         StartCoroutine(Walk());
+        alreadyWaiting = false;
     }
 
-    GameObject lastSpecialDamagedOne;
     public void Damaged(int damage){
         Damaged(false, damage);
     }
 
     //아마 싹 고쳐야 될듯?
+
+    [SerializeField] float attackKnuckbackDistance;
+    //0.7
+    [SerializeField] float attackKnuckbackTime;
+    //0.2
+
     public void Damaged(bool QTEsuccess = false, int damage = 10){
-        if(enemystate == EnemyState.Defenseless){
-            if(streak > 1){
-                float r = Random.Range(0f, Mathf.Pow(2,streak-1));
-                if (r < 1){
-                    bossHP -= damage;
-                    streak += 1;
-                    GameObject md = MakeDamagedSprite(false);
-                    transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
-                    md.transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
-                    defenselessTime = Time.time;
-                    lastDamaged = Time.time;
-                }
-                else {
-                    GameObject md = MakeDamagedSprite(true);
-                    md.transform.DOMove(VectorBtoP().normalized * -1.7f, 0.2f).SetRelative();
-                    transform.DOMove(VectorBtoP().normalized * -1.7f, 0.2f).SetRelative().OnComplete(() => {
-                        int i = Random.Range(0,2);
-                        if(i == 0) StartCoroutine(Chase());
-                        else StartCoroutine(BackStep());
-                    });
-                }
-            }
-            else{
-                bossHP -= damage;
-                streak += 1;
-                transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative().SetDelay(0.2f);
-                GameObject md = MakeDamagedSprite(false);
-                md.transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
-                defenselessTime = Time.time;
-                lastDamaged = Time.time;
-            }
+        if(enemystate == EnemyState.Idle){
+            bossHP -= damage;
+            GameObject md = MakeDamagedSprite(false);
+            transform.DOMove(VectorBtoP().normalized * -attackKnuckbackDistance, attackKnuckbackTime).SetRelative();
+            md.transform.DOMove(VectorBtoP().normalized * -attackKnuckbackDistance, attackKnuckbackTime).SetRelative();
+            PatternDamaged = true;
+            StartCoroutine(CeaseAndWalk(1.2f));
         }
         else if(enemystate == EnemyState.QTEEnable){
             enemystate = EnemyState.Special;
@@ -340,23 +328,6 @@ public class Boss1Behaviour : MonoBehaviour
                     he.transform.localPosition = temp;
                 }
             }
-        }
-        else if(enemystate == EnemyState.SuperArmor){
-            bossHP -= damage * 2 / 3;
-        }
-        else if(enemystate == EnemyState.Defensive){
-            //stamina 데미지?
-            CeasePattern();
-            enemystate = EnemyState.SuperArmor;
-            GameObject md = MakeDamagedSprite(true);
-            player.InstantiateParryEffect(transform.position + VectorBtoP().normalized * 0.5f);
-            md.transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative();
-            transform.DOMove(VectorBtoP().normalized * -0.7f, 0.2f).SetRelative().SetDelay(0.2f).OnComplete(() => {
-                int i = Random.Range(0,2);
-                if(i == 0) StartCoroutine(Chase());
-                else StartCoroutine(BackStep());
-            });
-
         }
 
         if(bossHP < bossHPMax/2) b1pe.Advanced();
@@ -381,8 +352,7 @@ public class Boss1Behaviour : MonoBehaviour
             //하고있는 거 중단
             //player의 공격 리스트 전부 삭제
             enemystate = EnemyState.QTEEnable;
-    
-            CeasePattern();
+            StartCoroutine(ParticleDestruct());
             GameManager.Instance.CameraSetting.PreZoomIn();
             player.StartZoom();
         }
@@ -436,7 +406,6 @@ public class Boss1Behaviour : MonoBehaviour
         SpriteRenderer attackSprite = Instantiate(afterimage, InsideFenceTransform(transform.position), Quaternion.identity);
         attackSprite.sprite = sprite;
         if( (VectorBtoP().x < 0 && !inverseFlip) || (VectorBtoP().x > 0 && inverseFlip) ) attackSprite.flipX = true;
-        
         attackSprite.GetComponent<SpriteRenderer>().DOFade(0, 1.7f).SetEase(Ease.InQuint).OnComplete(() => {
             Destroy(attackSprite.gameObject);
         });
@@ -495,7 +464,7 @@ public class Boss1Behaviour : MonoBehaviour
         if(playerDamaged){
             playerDamaged = false;
             if(pattern.damageStopPattern[pattern_num]) {
-                CeaseAndWalk(1.5f);
+                StartCoroutine(CeaseAndWalk(1.5f));
                 return true;
             }
         }
@@ -507,8 +476,11 @@ public class Boss1Behaviour : MonoBehaviour
         playerDamaged = isPlayerDamaged;
     }
 
+    [SerializeField] bool PatternDamaged = true; // 패턴이 시작하면 false, 패턴 중 맞으면 true가 되고 패턴을 종료시킴, 후속으로 걷는 패턴 (walk, shortwalk, chase)에서도 true로 만듦
+
     // 0 흰-흰-흰 정박
     IEnumerator Pattern0(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[0];
         int i;
@@ -518,56 +490,75 @@ public class Boss1Behaviour : MonoBehaviour
         GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[i]);
         for (i = 0 ; i < maxAttack ; i++){
             MakePreAttackEffect(pattern.attacktype[i]);
-            // yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(0.25f);
             player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
             while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
                 if(DoNextPattern(AttackPattern1, pattern, i)){
                     if(i == 0) Destroy(preattack);
-                    if(IsPlayerDamaged(pattern, i)) {
-                        yield break;
-                    }
+                    if(IsPlayerDamaged(pattern, i)) yield break;
                     break;
                 }
                 yield return new WaitForFixedUpdate();
             }
             if(enemystate == EnemyState.QTEEnable) yield break;
         }
-        DefenselessStart();
+
+        StartCoroutine(CeaseAndWalk(1.5f));
     }
-/*
     // 1 흰흰 - 흰
     IEnumerator Pattern1(){
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[1];
         int i;
+        
         i = 0;
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[0]);
         
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.2f);
-        
-        isDamageStopPattern = pattern.damageStopPattern[0];
-
         MakePreAttackEffect(pattern.attacktype[0]);
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[1]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        yield return new WaitForSeconds(0.25f);
 
-        i = 1;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        for(i = 0; i < 2 ; i++){
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[0], pattern.attackDamage[0], pattern.stanbyTime[0], pattern.attacktype[0]);
+            while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) yield break;
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;    
+        }
         
         i = 2;
-        MakePreAttackEffect(pattern.attacktype[2]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.25f);
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(DoNextPattern(AttackPattern1, pattern, i)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) {
+                    yield break;
+                }
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
 
         StartCoroutine(BackStep());
     }
+/*
 
     // 1 - 2 흰흰 - 흰흰 - 흰
     IEnumerator Pattern2(){
@@ -895,8 +886,7 @@ public class Boss1Behaviour : MonoBehaviour
         }
         StartCoroutine(ShortWalk());
     }
-
-    */
+*/
     public int GetBossHP(){
         return bossHP;
     }
@@ -909,10 +899,7 @@ public class Boss1Behaviour : MonoBehaviour
     }
 
     public void EnemyColor(){
-        if(enemystate == EnemyState.Defenseless){
-            sr.color = Color.yellow;
-        }
-        else if (enemystate == EnemyState.Special){
+        if (enemystate == EnemyState.Special){
             sr.color = Color.magenta;
         }
         else {
