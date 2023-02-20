@@ -233,7 +233,6 @@ public class Boss1Behaviour : MonoBehaviour
         PatternDamaged = false;
         enemystate = EnemyState.BackStep;
         FootprintEnable(false);
-        GameObject go = MakePreAttackSprite(backStepSprite);
         float t = Time.time;
         Vector3 v = -VectorBtoP();
         while(t > Time.time - backStepTime){
