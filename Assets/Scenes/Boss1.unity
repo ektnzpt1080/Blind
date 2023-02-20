@@ -1256,7 +1256,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: bossStaminaMax
-      value: 100
+      value: 1000
       objectReference: {fileID: 0}
     - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: walkToPatternTime

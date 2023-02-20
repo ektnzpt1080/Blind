@@ -56,7 +56,9 @@ public class Boss1Behaviour : MonoBehaviour
     public int streak; // 당하고 있는 연속공격 수
     float lastDamaged;
     SpriteRenderer sr; //spriterenderer
-
+    float footprintCoolTimeOriginal;
+    [SerializeField] bool nextPattern; //다음 패턴을 사용
+    [SerializeField] bool playerDamaged; // 플레이어가 데미지를 입음
 
     //for debug
     bool debugColor;
@@ -83,7 +85,6 @@ public class Boss1Behaviour : MonoBehaviour
     void Start()
     {
         sr = GetComponent<SpriteRenderer>();
-        enemystate = EnemyState.Start;
         StartCoroutine(FootPrint());
         footprintEnable = true;
         debugColor = true;
@@ -91,13 +92,15 @@ public class Boss1Behaviour : MonoBehaviour
         bossStamina = bossStaminaMax;
         lastDamaged = Time.time;
         streak = 0;
+        footprintCoolTimeOriginal = footprintCoolTime;
+        StartCoroutine(Walk());
+        nextPattern = false;
+        playerDamaged = false;
     }
 
     // Update is called once per frame
     void Update()
-    {
-        if(enemystate == EnemyState.Start) StartCoroutine(Walk());
-        
+    {     
         if(Time.time > defenselessTime + 2f){
             if(enemystate == EnemyState.Defenseless){
                 StartCoroutine(Walk());
@@ -263,8 +266,8 @@ public class Boss1Behaviour : MonoBehaviour
     }
 
     public void CeasePattern(bool playerDamaged = false){
-        StopAllCoroutines();
-        StartCoroutine(FootPrint());
+        footprintEnable = true;
+        footprintCoolTime = footprintCoolTimeOriginal;
         StartCoroutine(ParticleDestruct());
         //쳐맞음
         if(playerDamaged) {
@@ -281,6 +284,8 @@ public class Boss1Behaviour : MonoBehaviour
     public void Damaged(int damage){
         Damaged(false, damage);
     }
+
+    //아마 싹 고쳐야 될듯?
     public void Damaged(bool QTEsuccess = false, int damage = 10){
         if(enemystate == EnemyState.Defenseless){
             if(streak > 1){
@@ -302,7 +307,6 @@ public class Boss1Behaviour : MonoBehaviour
                         if(i == 0) StartCoroutine(Chase());
                         else StartCoroutine(BackStep());
                     });
-                    
                 }
             }
             else{
@@ -374,7 +378,10 @@ public class Boss1Behaviour : MonoBehaviour
             if( VectorBtoP().magnitude > 0.5f ){
                 transform.position = player.transform.position - VectorBtoP().normalized * 1.5f;
             }
+            //하고있는 거 중단
+            //player의 공격 리스트 전부 삭제
             enemystate = EnemyState.QTEEnable;
+    
             CeasePattern();
             GameManager.Instance.CameraSetting.PreZoomIn();
             player.StartZoom();
@@ -417,7 +424,7 @@ public class Boss1Behaviour : MonoBehaviour
         else return null;
     }
 
-    GameObject MakePreAattackSprite(Sprite sprite, float f = -1){
+    GameObject MakePreAttackSprite(Sprite sprite, float f = -1){
         SpriteRenderer image = Instantiate(afterimage, InsideFenceTransform(transform.position), Quaternion.identity);
         image.sprite = sprite;
         if(VectorBtoP().x < 0) image.flipX = true;
@@ -454,27 +461,50 @@ public class Boss1Behaviour : MonoBehaviour
 
     // boss가 player에게 최대 max distance만큼 돌진 후 attackdistance만큼 attacktype으로 공격, 
     // proper distance만큼 돌진하려고 함, proper distance보다 가까우면 현재 자리에서 시전
-    void AttackPattern1(float maxdistance, float properdistance, float attackdistance, Attacktype attacktype, int attackdamage){
+    // 이제 이동만 함
+    void AttackPattern1(float maxdistance, float properdistance){
         Vector3 v = VectorBtoP().normalized;
         Vector3 maxV = v * maxdistance;
         Vector3 properV = VectorBtoP() - v * properdistance;
         if(Vector3.Dot(properV, v) < 0) properV = Vector3.zero; // 너무 가까우면 제자리에서 패턴 진행
         Vector3 pos = (maxV.magnitude < properV.magnitude) ? maxV : properV;
         transform.Translate(pos);
-        if (VectorBtoP().magnitude <= attackdistance){
-            player.Attacked(transform.position, attackdamage, attacktype);
-        }
     }
     
     // 항상 max distance만큼 돌진하고 돌진경로에 플레이어가 있으면 startposition 방향에서 공격함
-    void AttackPattern2(float maxdistance, Attacktype attacktype, int attackdamage){
+    // 이제 이동만 함
+    void AttackPattern2(float maxdistance, float properdistance){
         Vector3 startposition = transform.position;
         Vector3 v = VectorBtoP().normalized * maxdistance;
         transform.Translate(v);
-        RaycastHit2D hit = Physics2D.Raycast(startposition, transform.position - startposition, (transform.position - startposition).magnitude, LayerMask.GetMask("Player"));
-        if(hit.collider != null){
-            player.Attacked(startposition, attackdamage, attacktype);
+
+    }
+    
+    //다음 패턴으로 넘어감 + 현재 자리에 공격 스프라이트 만듦
+    bool DoNextPattern(System.Action<float, float> Function, Pattern pattern, int pattern_num){
+        if(nextPattern){
+            nextPattern = false;
+            Function(pattern.maxDashDistance[pattern_num], pattern.properDashDistance[pattern_num]);
+            MakeAttackSprite(pattern.attackSprites[pattern_num]);
+            return true;
         }
+        return false;
+    }
+
+    bool IsPlayerDamaged(Pattern pattern, int pattern_num){
+        if(playerDamaged){
+            playerDamaged = false;
+            if(pattern.damageStopPattern[pattern_num]) {
+                CeaseAndWalk(1.5f);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void NextPattern(bool isPlayerDamaged){
+        nextPattern = true;
+        playerDamaged = isPlayerDamaged;
     }
 
     // 0 흰-흰-흰 정박
@@ -483,21 +513,28 @@ public class Boss1Behaviour : MonoBehaviour
         Pattern pattern = boss1PatternList[0];
         int i;
         int maxAttack = 3;
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
 
-        for(i = 0 ; i < maxAttack; i++){
-            isDamageStopPattern = pattern.damageStopPattern[i];
-
+        i = 0;
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[i]);
+        for (i = 0 ; i < maxAttack ; i++){
             MakePreAttackEffect(pattern.attacktype[i]);
-            yield return new WaitForSeconds(pattern.stanbyTime[i]);
-            
-            AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-            MakeAttackSprite(pattern.attackSprites[i]);
+            // yield return new WaitForSeconds(1f);
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+            while(true){
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) {
+                        yield break;
+                    }
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;
         }
-
         DefenselessStart();
     }
-
+/*
     // 1 흰흰 - 흰
     IEnumerator Pattern1(){
         FootprintEnable(false);
@@ -858,6 +895,8 @@ public class Boss1Behaviour : MonoBehaviour
         }
         StartCoroutine(ShortWalk());
     }
+
+    */
     public int GetBossHP(){
         return bossHP;
     }

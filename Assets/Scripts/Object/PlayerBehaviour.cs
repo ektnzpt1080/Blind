@@ -16,7 +16,6 @@ public class PlayerBehaviour : MonoBehaviour
         Damaged,
         Roll,
         Running,
-        Parrying,
         Guard,
         QTE,
         OnlyAttack
@@ -69,7 +68,10 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] PlayerState playerstate; //PlayerState
     Vector2 moveDirection; // 움직이는 방향
     Vector2 rollDirection; // 롤 방향 평소엔 영벡터
-    List<BlueAttack> blueList; // blue attack 처리
+    bool parryable; //패리 가능 상태
+    float lastParryTime; // 마지막으로 패리가 된 상태
+    [SerializeField] List<Attack> attackList;
+
     Camera mainCamera;
     SpriteRenderer sr;
     PlayerQTE pQTE; //QTE 관련
@@ -77,6 +79,8 @@ public class PlayerBehaviour : MonoBehaviour
     bool zoomed; //줌인 되어 있으면 true
     float zoomedTime; //줌인 된 시간
     Vector3 QTEStartpoint; // QTE 보조용 벡터
+
+
     
 
     // Start is called before the first frame update
@@ -86,47 +90,54 @@ public class PlayerBehaviour : MonoBehaviour
         pQTE = GetComponent<PlayerQTE>();
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
-        parryDuration = parryDurationMax;
         guardTime = 0;
-        lastGuardTime = Time.time;
         lastRollTime = Time.time;
+        lastParryTime = Time.time;
+
         lastStaminaSpendTime = Time.time;
         playerStamina = playerStaminaMax;
         attackCollider = attackRange.GetComponent<Collider2D>();
-        blueList = new List<BlueAttack>();
+        attackList = new List<Attack>();
     }
 
+
+    [SerializeField] float parryableTime;
     // Update is called once per frame
     void Update()
     {
         PlayerControl();
-        if (parryDuration < parryDurationMax)
+        
+        //패링 회복 관련
+        if (!parryable)
         {
-            if (lastGuardTime + 30 / 60f < Time.time) ParryNormalize();
+            if (lastParryTime + parryableTime < Time.time) ParryNormalize();
         }
+
+        //스태미나 관련
         if (playerStamina < playerStaminaMax)
         {
             if (lastStaminaSpendTime + staminaRecoveryTime < Time.time){
                 playerStamina += staminaRecoverySpeed * Time.deltaTime;
             }
         }
-        
+        //border밖으로 못나가게
         float x = Mathf.Clamp(transform.position.x, -border.x, border.x);
         float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
         transform.position = new Vector3(x,y,0);
 
-        BlueAttackProcess();
+        //공격 판정
+        AttackProcess();
         
-        PlayerColor();
-
         if(zoomed && zoomedTime + zoomMaxTime < Time.time) {
             EndZoom();
             playerstate = PlayerState.Idle;
         }
 
-        if(Input.GetKeyDown(KeyCode.F1)){
-            SceneManager.LoadScene("MainMenu");
-        }
+        mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+        float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
+        attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
+
+        PlayerColor();
     }
 
     void PlayerControl()
@@ -142,22 +153,20 @@ public class PlayerBehaviour : MonoBehaviour
         {
             if (playerstate == PlayerState.Idle)
             {
-                playerstate = PlayerState.Parrying;
+                playerstate = PlayerState.Guard;
+                if(parryable){
+                    lastParryTime = Time.time;
+                    parryable = false;
+                    Parrying();
+                    Debug.Log("Parrying block : " + Time.time);
+                }
             }
-        }
-        else if (Input.GetMouseButton(1))
-        {
-            if (playerstate == PlayerState.Parrying) guardTime += Time.deltaTime;
-            if (playerstate == PlayerState.Parrying && guardTime > parryDuration) playerstate = PlayerState.Guard;
         }
         else if (Input.GetMouseButtonUp(1))
         {
-            if (playerstate == PlayerState.Parrying || playerstate == PlayerState.Guard)
+            if (playerstate == PlayerState.Guard)
             {
                 playerstate = PlayerState.Idle;
-                guardTime = 0;
-                lastGuardTime = Time.time;
-                parryDuration = Mathf.Max(parryDuration - 5 / 60f, parryDurationMin);
             }
         }
 
@@ -191,9 +200,7 @@ public class PlayerBehaviour : MonoBehaviour
             if(playerStamina < 0 || (moveDirection.x == 0 && moveDirection.y == 0)) playerstate = PlayerState.Idle;
         }
 
-        mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-        float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
-        attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
+
     }
 
     IEnumerator Rolling(Vector2 v)
@@ -215,16 +222,29 @@ public class PlayerBehaviour : MonoBehaviour
 
     }
 
+    public void Parrying(){
+        if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.white){
+            Attack a = attackList[0];
+            if(Vector2.Angle(-attackList[0].attackDirection, mouseVec) < 75) {
+                InstantiateParryEffect(transform.position - attackList[0].attackDirection.normalized * 0.5f);
+                ParryNormalize();
+                GuardKnuckback(attackList[0].attackDirection.normalized);
+                boss.StaminaDamaged();
+                boss.NextPattern(false);
+                attackList.RemoveAt(0);
+            }
+        }
+    }
+
     public void ParryNormalize()
     {
-        //튕겨내기에 성공했을 때도 호출 할 것
-        parryDuration = parryDurationMax;
+        parryable = true;
     }
 
     public bool AttackAvailiableState()
     {
         return playerstate == PlayerState.Idle || playerstate == PlayerState.Running || 
-            playerstate == PlayerState.Guard || playerstate == PlayerState.Parrying || playerstate == PlayerState.OnlyAttack;
+            playerstate == PlayerState.Guard || playerstate == PlayerState.OnlyAttack;
     }
 
     public bool DamageAvailiableState(){
@@ -234,9 +254,10 @@ public class PlayerBehaviour : MonoBehaviour
 
     //공격 + 파랑 공격 패링 판정
     public void Attack(){
-        if(blueList.Count > 0 && Vector2.Angle(blueList[0].attackDirection, -mouseVec) < 75){
-            blueList.RemoveAt(0);
+        if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
+            attackList.RemoveAt(0);
             // TODO : parry 됐을때의 적절한 처리
+
             Instantiate(parryEffect, transform.position + V2toV3(mouseVec).normalized * 0.4f, Quaternion.identity);
             InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
         }
@@ -254,10 +275,12 @@ public class PlayerBehaviour : MonoBehaviour
             });
         }
     }
+
     public GameObject InstantiateParryEffect(Vector3 v){
         return Instantiate(parryEffect, v, Quaternion.identity);
     }
 
+    //쿠나이 돌리기
     public void InstantiateBlueObject2(Vector3 pos, Vector3 bAttackDirection){
         GameObject bo = Instantiate(blueObject, pos, Quaternion.identity);
         Transform mask = bo.transform.GetChild(0);
@@ -321,44 +344,7 @@ public class PlayerBehaviour : MonoBehaviour
     }
 
     public void AfterParry(){
-        playerstate = PlayerState.Guard;
         ParryNormalize();
-    }
-
-    // 빨강, 하양공격의 패리와 가드 판정
-    public void Attacked( Vector3 attackCenter, int damage, Attacktype attacktype, float guardKnuckback = -1f){
-        Vector3 attackVec =  attackCenter - transform.position;
-        float angle = Vector2.Angle(mouseVec, attackVec);
-        
-        if(attacktype == Attacktype.white){
-            if(playerstate == PlayerState.Parrying && angle < 75){
-                Vector3 v3 = attackVec;
-                Instantiate(parryEffect, transform.position + v3.normalized * 0.5f , Quaternion.identity);
-                AfterParry();
-                boss.StaminaDamaged();
-                GuardKnuckback(-attackVec);
-            }
-            else if(playerstate == PlayerState.Guard && angle < 75){
-                DamagedSmall(damage / 2, - attackVec.normalized);
-                GuardKnuckback(-attackVec);
-            }
-
-            else if( DamageAvailiableState() || playerstate == PlayerState.Parrying || playerstate == PlayerState.Guard){
-                DamagedBig(damage, -attackVec.normalized);
-                
-            }
-        }
-        else if(attacktype == Attacktype.red){
-            if(playerstate == PlayerState.Roll && Vector2.Angle(attackVec, rollDirection) < 75){
-                StopAllCoroutines();
-                transform.DOMove(transform.position + V2toV3(rollDirection).normalized * 1.2f, zoomMaxTime);
-                boss.StaminaDamaged(30, true);
-                playerstate = PlayerState.OnlyAttack;
-            }
-            else if(DamageAvailiableState() || playerstate == PlayerState.Parrying || playerstate == PlayerState.Guard) {
-                DamagedBig(damage, -attackVec.normalized);                
-            }
-        }
     }
 
     public void StartZoom(){
@@ -374,25 +360,79 @@ public class PlayerBehaviour : MonoBehaviour
         }
     }
 
-    public void AttackedBlue( Vector3 attackCenter, Vector3 targetPosition, int damage, float duration){
-        blueList.Add(new BlueAttack(attackCenter, targetPosition, damage, Time.time + duration));
-        blueList.Sort((a,b) => a.time.CompareTo(b.time));
+    public void AttackListAdd( Vector3 attackCenter, Vector3 targetPosition, int damage, float duration, Attacktype attacktype){
+        attackList.Add(new Attack(attackCenter, targetPosition, damage, Time.time + duration, attacktype));
+        attackList.Sort((a,b) => a.time.CompareTo(b.time));
+    }
+    
+    public void AttackListAdd( Vector3 attackCenter, Vector3 direction, float distance, int damage, float duration, Attacktype attacktype){
+        attackList.Add(new Attack(attackCenter, direction, distance, damage, Time.time + duration, attacktype));
+        attackList.Sort((a,b) => a.time.CompareTo(b.time));
     }
 
-    public void BlueAttackProcess(){
-        if(blueList.Count != 0){
-            if(blueList[0].time < Time.time){
-                BlueAttack ba = blueList[0];
-                if(DamageAvailiableState() || playerstate == PlayerState.Parrying || playerstate == PlayerState.Guard) {
-                    RaycastHit2D hit = Physics2D.Raycast(ba.startPoint, ba.attackDirection, LayerMask.GetMask("Player"));
-                    if(hit.collider != null){
-                        DamagedBig(ba.damage, ba.attackDirection);
-                        // 맞았다는 신호 + 애니메이션 재생 
-                        // 아마 List에 있는 blue 전부 지워버리고 -> boss 쪽 새 패턴 추출하는 식으로 할 듯?
+    public void AttackedBlue( Vector3 attackCenter, Vector3 targetPosition, int damage, float duration){
+        AttackListAdd(attackCenter, targetPosition, damage, duration, Attacktype.blue);
+    }
+
+    public void AttackProcess(){
+        if(attackList.Count != 0){
+            if(attackList[0].time < Time.time){
+                Attack a = attackList[0];
+                if(a.attacktype == Attacktype.white){
+                    float angle = Vector2.Angle(mouseVec, -a.attackDirection);
+                    if((a.startPoint - transform.position).magnitude < a.attackDistance){
+                        if (playerstate == PlayerState.Guard && angle < 75) {
+                            DamagedSmall(a.damage / 2, a.attackDirection.normalized);
+                            
+                            boss.NextPattern(false);
+                        }
+                        else if( DamageAvailiableState() ||  playerstate == PlayerState.Guard){
+                            DamagedBig(a.damage, a.attackDirection.normalized);
+                            boss.NextPattern(true);
+                        }
+                        else {
+                            boss.NextPattern(false);
+                        }
+                    }
+                    else{
+                        boss.NextPattern(false);
                     }
                 }
-                blueList.RemoveAt(0);
-                //맞지는 않음 + 애니메이션 재생
+                else if(a.attacktype == Attacktype.red){
+                    if(DamageAvailiableState() ||  playerstate == PlayerState.Guard) {
+                    RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, LayerMask.GetMask("Player"));
+                        if(hit.collider != null){
+                            DamagedBig(a.damage, -a.attackDirection);
+                            boss.NextPattern(true); //보스 쪽에 패턴 멈추라고 신호를 줌
+                            // 맞았다는 신호 + 애니메이션 재생 
+                            // 이건 중간에 하게 만들어야 되나? 일단 만들자
+                        }
+                        else{
+                            boss.NextPattern(false);
+                        }
+                    }
+                    else{
+                        boss.NextPattern(false);
+                    }
+                }   
+                else if(a.attacktype == Attacktype.blue){
+                    if(DamageAvailiableState() || playerstate == PlayerState.Guard) {
+                    RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, LayerMask.GetMask("Player"));
+                        if(hit.collider != null){
+                            DamagedBig(a.damage, a.attackDirection);
+                            boss.NextPattern(true); //보스 쪽에 패턴 멈추라고 신호를 줌
+                            // 맞았다는 신호 + 애니메이션 재생 
+                            // 아마 List에 있는 blue 전부 지워버리고 -> boss 쪽 새 패턴 추출하는 식으로 할 듯?
+                        }
+                        else{
+                            boss.NextPattern(false);
+                        }
+                    }
+                    else{
+                        boss.NextPattern(false);
+                    }
+                }
+                attackList.RemoveAt(0);
             }
         }
     }
@@ -410,13 +450,12 @@ public class PlayerBehaviour : MonoBehaviour
         transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
             playerstate = PlayerState.Idle;
         });
-        boss.CeasePattern(true);
-
     }
 
-    //guard 했을때의 데미지
+    //guard 했을때의 데미지 + 넉백 
     public void DamagedSmall(int damage, Vector3 vec){
         playerHealth -= damage;
+        GuardKnuckback(vec);
     }
 
     //가드또는 패링했을때의 넉백, attack 했을 때의 넉백도 있음
@@ -431,8 +470,6 @@ public class PlayerBehaviour : MonoBehaviour
         });
     }
 
-
-
     public int GetPlayerHP(){
         return playerHealth;
     }
@@ -440,19 +477,11 @@ public class PlayerBehaviour : MonoBehaviour
     public float GetPlayerStamina(){
         return playerStamina;
     }
-
-    public Vector3 V2toV3(Vector2 v){
-        Vector3 v3 = v;
-        return v3;
-    }
     
     //For Debug
     public void PlayerColor(){
         if(playerstate == PlayerState.Damaged){
             sr.color = Color.red;
-        }
-        else if(playerstate == PlayerState.Parrying){
-            sr.color = Color.green;
         }
         else if(playerstate == PlayerState.Guard){
             sr.color = Color.gray;
@@ -470,9 +499,10 @@ public class PlayerBehaviour : MonoBehaviour
             sr.color = Color.white;
         }
 
-        
     }
-    private void OnDrawGizmos() {
-        Gizmos.color = Color.blue;
+    
+    public Vector3 V2toV3(Vector2 v){
+        Vector3 v3 = v;
+        return v3;
     }
 }

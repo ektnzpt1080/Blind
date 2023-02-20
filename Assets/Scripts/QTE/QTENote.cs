@@ -30,17 +30,17 @@ public class QTENote : MonoBehaviour
 
     void Update(){
         if(isEnable){
-            if(judge.transform.position.x > transform.position.x + rectTransform.rect.width/2){
+            if(judge.transform.position.x > transform.position.x + rectTransform.rect.width/2 + 5){
                 Judge(false);
             }
-            if(judge.transform.position.x < transform.position.x - rectTransform.rect.width/2 
+            else if(judge.transform.position.x < transform.position.x - rectTransform.rect.width/2 
                 && judge.transform.position.x > transform.position.x - rectTransform.rect.width*7/8 && isFirst2){
                 if(Input.GetMouseButtonDown(0)){
                     Judge(false);
                 }
             }
-            if(judge.transform.position.x < transform.position.x + rectTransform.rect.width/2 
-                && judge.transform.position.x > transform.position.x - rectTransform.rect.width/2){
+            else if(judge.transform.position.x < transform.position.x + rectTransform.rect.width/2 + 5
+                && judge.transform.position.x > transform.position.x - rectTransform.rect.width/2 - 5 && isFirst2){
                 if(Input.GetMouseButtonDown(0)){
                     Judge(true);
                 }

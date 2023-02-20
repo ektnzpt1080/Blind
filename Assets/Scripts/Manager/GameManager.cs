@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -22,5 +23,10 @@ public class GameManager : MonoBehaviour
         CameraSetting = GameObject.Find("CM vcam1").GetComponent<CameraSetting>();
     }
     
+    void Update(){
+        if(Input.GetKeyDown(KeyCode.F1)){
+            SceneManager.LoadScene("MainMenu");
+        }
+    }
     
 }

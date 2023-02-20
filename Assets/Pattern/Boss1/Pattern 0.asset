@@ -20,9 +20,9 @@ MonoBehaviour:
   - 0.8
   - 0.8
   attackDistance:
-  - 2
-  - 2
-  - 2
+  - 4
+  - 4
+  - 4
   maxDashDistance:
   - 2
   - 2

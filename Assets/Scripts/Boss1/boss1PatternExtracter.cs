@@ -70,6 +70,9 @@ public class boss1PatternExtracter : MonoBehaviour
     }
 
     public string RandomExtract(List<PatternLink> pl, out int res){
+        res = 0;
+        return "Pattern0";
+        /*
         do {
             res = Random.Range(0, pl.Count);
         } while(res == lastPatternNum);
@@ -89,5 +92,7 @@ public class boss1PatternExtracter : MonoBehaviour
         }
         Debug.Log(res);
         return ret.pattern;
+
+        */
     }
 }
