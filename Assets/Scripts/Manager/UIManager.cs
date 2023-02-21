@@ -7,7 +7,6 @@ using TMPro;
 
 public class UIManager : MonoBehaviour
 {
-    public TextMeshProUGUI playerHP, playerStamina, bossHP, bossStamina;
     public PlayerBehaviour player;
     public Boss1Behaviour boss;
     [SerializeField] Slider sliderHP, sliderRecoveryHP, sliderBossHP, sliderAttackGauge, sliderGuardGauage;
@@ -28,23 +27,11 @@ public class UIManager : MonoBehaviour
         recoveryHPLerp = player.GetRecoveryHealth();
         stamina = 4;
         bossHPLerp = 0;
-        guardGauageLerp = player.GetGuardGauge();
-
+        guardGauageLerp = 1.05f;
         sliderBossHP.maxValue = boss.GetBossHPMax();
     }
 
     void Update(){
-        playerHP.text = "HP : " + player.GetPlayerHP() + " / 1000";
-        float s = player.GetPlayerStamina();
-        if (s > 4){
-            playerStamina.text = "Stamina : 4 / 4";    
-        }
-        else {
-            playerStamina.text = "Stamina : " + player.GetPlayerStamina().ToString("F2") + " / 4";
-        }
-        bossHP.text = "Boss HP : "+ boss.GetBossHP() + " / 1000";
-        bossStamina.text = "Boss Stamina : "+ boss.GetBossStamina() + " / " + boss.GetBossMaxStamina();
-
         hpLerp = Mathf.Lerp(hpLerp, player.GetPlayerHP(), Time.deltaTime * t);
         sliderHP.value = hpLerp;
         
@@ -70,7 +57,6 @@ public class UIManager : MonoBehaviour
     }
 
     void FireStamina(Image fire, Animator fireAnimation, float min, float max){
-        Debug.Log(stamina);
         if(stamina < min){
             fire.transform.localScale = minScale;
             fire.color = minColor;

@@ -15,7 +15,6 @@ public class Boss1Behaviour : MonoBehaviour
     }
     
     boss1PatternExtracter b1pe;
-    Animator animator;
     [SerializeField] EnemyState enemystate;
     
     [SerializeField] List<Pattern> boss1PatternList; // 패턴 리스트
@@ -31,10 +30,7 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] float walkMaxTime; //Boss가 Walk -> Chase에 들어가는 시간
     [SerializeField] float chaseSpeed; //Boss가 움직이는 속도 (Chase)
     [SerializeField] float footprintCoolTime; //Footprint 간격시간
-    [SerializeField] float footprintTime; //Footprint 지속시간
-    [SerializeField] float defenselessTime; //Defenseless가 된 시간
     [SerializeField] int bossStaminaMax; // boss 스태미나 max
-    [SerializeField] float streakTime = 5f; // streak가 끝나는 시간
     [SerializeField] float backStepSpeed; // backstep 속도
     [SerializeField] float backStepTime; // backstep 속도
     [SerializeField] int bossHPMax; // backstep 속도
@@ -42,13 +38,10 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] Sprite damageSprite;
     [SerializeField] Sprite guardSprite;
 
-    bool isDamageStopPattern; // 현재 진행중인 Pattern이 데미지 받으면 패턴이 종료되는 지
-    bool isParryStopPattern; // 현재 진행중인 pattern이 패링으로 QTE모드를 발동시키는 지
     bool footprintEnable; //Boss Footprint 출력 여부
     Vector2 footprintDirection; //Footprint 방향
     int bossHP; // Boss HP
     [SerializeField] int bossStamina; // boss의 스태미나 (QTE)
-    public int streak; // 당하고 있는 연속공격 수
     float lastDamaged;
     SpriteRenderer sr; //spriterenderer
     float footprintCoolTimeOriginal;
@@ -69,7 +62,6 @@ public class Boss1Behaviour : MonoBehaviour
         b1pe.patternList.Add(new PatternLink("Pattern3", 3));
         b1pe.patternList.Add(new PatternLink("Pattern4", 4, 1f));
         b1pe.patternList.Add(new PatternLink("Pattern5", 5, true));
-        b1pe.patternList.Add(new PatternLink("Pattern6", 6, true));
         b1pe.patternList.Add(new PatternLink("Pattern7", 7));
         b1pe.patternList.Add(new PatternLink("Pattern8", 8, false, true));
         b1pe.patternList[2].advanced = (new PatternLink("Pattern9", 9, false, true));
@@ -86,15 +78,14 @@ public class Boss1Behaviour : MonoBehaviour
         footprintEnable = true;
         debugColor = true;
         bossHP = bossHPMax;
-        bossStamina = bossStaminaMax;
+        bossStamina = bossStaminaMax/2;
         lastDamaged = Time.time;
-        streak = 0;
         footprintCoolTimeOriginal = footprintCoolTime;
         StartCoroutine(Walk());
         nextPattern = false;
         playerDamaged = false;
         alreadyWaiting = false;
-        walkAgain = false;
+        CoroutineAgain = false;
     }
 
     // Update is called once per frame
@@ -104,7 +95,6 @@ public class Boss1Behaviour : MonoBehaviour
         float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
         transform.position = new Vector3(x,y,0);
 
-        if(streak != 0 && Time.time > lastDamaged + streakTime) streak = 0;
 
         /*        
         if(Input.GetKeyDown(KeyCode.X)){
@@ -254,19 +244,33 @@ public class Boss1Behaviour : MonoBehaviour
     }
 
     bool alreadyWaiting;
-    bool walkAgain;
+    bool CoroutineAgain;
     IEnumerator CeaseAndWalk(float f){
-        if(alreadyWaiting) walkAgain = true;//이미 돌아가는 중
+        if(alreadyWaiting) CoroutineAgain = true;//이미 돌아가는 중
 
         alreadyWaiting = true;
         yield return new WaitForSeconds(f);
-        if(walkAgain) {
-            walkAgain = false;
+        if(CoroutineAgain) {
+            CoroutineAgain = false;
             yield break;
         }
         footprintCoolTime = footprintCoolTimeOriginal;
         StartCoroutine(Walk());
         alreadyWaiting = false;
+    }
+
+    IEnumerator CeaseAndChase(float f){
+        if(alreadyWaiting) CoroutineAgain = true;//이미 돌아가는 중
+
+        alreadyWaiting = true;
+        yield return new WaitForSeconds(f);
+        if(CoroutineAgain) {
+            CoroutineAgain = false;
+            yield break;
+        }
+        footprintCoolTime = footprintCoolTimeOriginal;
+        alreadyWaiting = false;
+        StartCoroutine(Chase());
     }
 
     public void Damaged(int damage){
@@ -287,7 +291,7 @@ public class Boss1Behaviour : MonoBehaviour
             transform.DOMove(VectorBtoP().normalized * -attackKnuckbackDistance, attackKnuckbackTime).SetRelative();
             md.transform.DOMove(VectorBtoP().normalized * -attackKnuckbackDistance, attackKnuckbackTime).SetRelative();
             PatternDamaged = true;
-            StartCoroutine(CeaseAndWalk(1.2f));
+            StartCoroutine(CeaseAndChase(0.2f));
         }
         else if(enemystate == EnemyState.QTEEnable){
             enemystate = EnemyState.Special;
@@ -680,8 +684,7 @@ public class Boss1Behaviour : MonoBehaviour
         }
         if(enemystate == EnemyState.QTEEnable) yield break;        
         
-        yield return new WaitForSeconds(0.3f);
-        StartCoroutine(Chase());
+        StartCoroutine(CeaseAndChase(0.3f));
     }
 
     // 4 흰 돌진 - 옆으로 돌아서 흰 돌진
@@ -783,7 +786,7 @@ public class Boss1Behaviour : MonoBehaviour
         StartCoroutine(CeaseAndWalk(1.2f));
     }
     
-    // 6 흰 - 흰 (멀리서 공격) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack) 폐기직전
+    // 6 흰 - 흰 (멀리서 공격) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack) 폐기!
     IEnumerator Pattern6(){
         PatternDamaged = false;
         Pattern pattern = boss1PatternList[6];

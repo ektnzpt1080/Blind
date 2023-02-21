@@ -29,6 +29,9 @@ public class GameManager : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.F1)){
             SceneManager.LoadScene("MainMenu");
         }
+        if(Input.GetKeyDown(KeyCode.R)){
+            SceneManager.LoadScene("Boss1");
+        }
     }
     
 }

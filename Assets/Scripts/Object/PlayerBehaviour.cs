@@ -18,7 +18,8 @@ public class PlayerBehaviour : MonoBehaviour
         Running,
         Guard,
         QTE,
-        OnlyAttack
+        OnlyAttack,
+        Dead
     }
 
     //건드릴 것
@@ -84,12 +85,14 @@ public class PlayerBehaviour : MonoBehaviour
     bool zoomed; //줌인 되어 있으면 true
     float zoomedTime; //줌인 된 시간
     Vector3 QTEStartpoint; // QTE 보조용 벡터
+    Animator animator;
 
     // Start is called before the first frame update
     void Start()
     {
         sr = GetComponent<SpriteRenderer>();
         pQTE = GetComponent<PlayerQTE>();
+        animator = GetComponent<Animator>();
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
         guardGauge = 1.01f;
@@ -101,6 +104,7 @@ public class PlayerBehaviour : MonoBehaviour
         playerStamina = playerStaminaMax;
         attackCollider = attackRange.GetComponent<Collider2D>();
         attackList = new List<Attack>();
+
     }
 
 
@@ -135,6 +139,7 @@ public class PlayerBehaviour : MonoBehaviour
         if(zoomed && zoomedTime + zoomMaxTime < Time.time) {
             EndZoom();
             playerstate = PlayerState.Idle;
+            animator.SetTrigger("Idle");
         }
 
         mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
@@ -172,12 +177,16 @@ public class PlayerBehaviour : MonoBehaviour
                 playerstate = PlayerState.Idle;
                 AttackDash();
             } 
-            else if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
+            else if(playerstate == PlayerState.Attack) {
+                playerstate = PlayerState.Idle;
+                animator.SetTrigger("Idle");
+            }
         }
         else if (Input.GetMouseButtonDown(1))
         {
             if (playerstate == PlayerState.Idle)
             {
+                animator.SetTrigger("Guard");
                 playerstate = PlayerState.Guard;
                 if(parryable){
                     lastParryTime = Time.time;
@@ -189,7 +198,10 @@ public class PlayerBehaviour : MonoBehaviour
         }
         else if (Input.GetMouseButtonUp(1))
         {
-            if (playerstate == PlayerState.Guard) playerstate = PlayerState.Idle;
+            if (playerstate == PlayerState.Guard) {
+                playerstate = PlayerState.Idle;
+                animator.SetTrigger("Idle");
+            }
         }
 
         //attackGauge 초기화
@@ -199,7 +211,7 @@ public class PlayerBehaviour : MonoBehaviour
         }
 
         //HP 회복
-        if(lastDamagedTime + recoveryTime < Time.time){
+        if(lastDamagedTime + recoveryTime < Time.time && playerstate != PlayerState.Dead){
             playerHealth += recoverySpeed * Time.deltaTime;
             if(playerHealth > playerRecoveryHealth) playerHealth = playerRecoveryHealth;
         }
@@ -226,9 +238,14 @@ public class PlayerBehaviour : MonoBehaviour
 
         if (playerstate == PlayerState.Idle)
         {
+            if(moveDirection.x != 0 || moveDirection.y != 0) animator.SetBool("Move", true);
+            else animator.SetBool("Move", false);
+            
             transform.Translate(V2toV3(moveDirection).normalized * playerMoveSpeed * Time.deltaTime);
+            
         }
         else if(playerstate == PlayerState.Running){
+            animator.SetBool("Move", true);
             transform.Translate(V2toV3(moveDirection).normalized * playerRunningSpeed * Time.deltaTime);
             lastStaminaSpendTime = Time.time;
             playerStamina -= playerRunningStaminaSpendingSpeed * Time.deltaTime;
@@ -264,7 +281,10 @@ public class PlayerBehaviour : MonoBehaviour
         }
         transform.DOKill(false);
         transform.DOMove(transform.position + V2toV3(mouseVec).normalized * attackDashDistance, 0.4f).OnComplete(() => {
-            if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
+            if(playerstate == PlayerState.Attack) {
+                playerstate = PlayerState.Idle;
+                animator.SetTrigger("Idle");
+            }
         });
     }
     
@@ -298,7 +318,10 @@ public class PlayerBehaviour : MonoBehaviour
 
         if(playerstate == PlayerState.Roll){
             if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.Space)) playerstate = PlayerState.Running;
-            else playerstate = PlayerState.Idle;
+            else {
+                playerstate = PlayerState.Idle;
+                animator.SetTrigger("Idle");
+            }
         }
         rollDirection = Vector2.zero;
 
@@ -382,6 +405,7 @@ public class PlayerBehaviour : MonoBehaviour
     IEnumerator EndQTE_(){
         yield return new WaitForSeconds(0.4f);
         playerstate = PlayerState.Idle;
+        animator.SetTrigger("Idle");
     }
 
     public void QTEDash(bool firstcall, bool isSuccess){
@@ -422,6 +446,7 @@ public class PlayerBehaviour : MonoBehaviour
             zoomed = false;
             boss.SkipQTE();
             playerstate = PlayerState.Idle;
+            animator.SetTrigger("Idle");
         }
     }
 
@@ -437,6 +462,13 @@ public class PlayerBehaviour : MonoBehaviour
 
     public void AttackedBlue( Vector3 attackCenter, Vector3 targetPosition, int damage, float duration){
         AttackListAdd(attackCenter, targetPosition, damage, duration, Attacktype.blue);
+    }
+
+    public void PlayerDead(){
+        StopAllCoroutines();
+        transform.DOKill(false);
+        playerstate = PlayerState.Dead;
+        //애니메이션 재생
     }
 
     public void AttackProcess(){
@@ -497,15 +529,17 @@ public class PlayerBehaviour : MonoBehaviour
                 attackList.RemoveAt(0);
             }
         }
+        
     }
 
     // 클린 히트했을때
     public void DamagedBig(int damage, Vector3 vec){
+        animator.SetTrigger("Hit");
         GameManager.Instance.DestructChargeParticles.Invoke();
         playerstate = PlayerState.Damaged;
         playerHealth -= damage;
         if(playerHealth <= 0 ){
-            // TODO 게임오버 처리
+            PlayerDead();
             return;
         }
         playerRecoveryHealth -= damage/3f;
@@ -513,6 +547,7 @@ public class PlayerBehaviour : MonoBehaviour
         transform.DOKill(false);
         transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
             playerstate = PlayerState.Idle;
+            animator.SetTrigger("Idle");
         });
     }
 
@@ -520,23 +555,21 @@ public class PlayerBehaviour : MonoBehaviour
     public void DamagedSmall(int damage, Vector3 vec){
         playerHealth -= damage;
         if(playerHealth <= 0 ){
-            // TODO 게임오버 처리
+            PlayerDead();
             return;
         }
         lastDamagedTime = Time.time;
         GuardKnuckback(vec);
     }
 
-    //가드또는 패링했을때의 넉백, attack 했을 때의 넉백도 있음
+    //가드또는 패링했을때의 넉백
     public void GuardKnuckback(Vector3 vec, float knuckback = -1f){
         float f = knuckback;
         if (f < 0) {
             f = knuckbackSmall;
         }
         transform.DOKill(false);
-        transform.DOMove(transform.position + vec * f, 0.1f).SetEase(Ease.OutCubic).OnComplete(() => {
-            if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
-        });
+        transform.DOMove(transform.position + vec * f, 0.1f).SetEase(Ease.OutCubic);
     }
     public void GainGuardGauge(float f){
         guardGauge += f;
