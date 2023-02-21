@@ -16,9 +16,9 @@ MonoBehaviour:
   attacktype: 000000000000000000000000
   startDistance: 2.5
   stanbyTime:
-  - 0.8
-  - 0.8
-  - 0.8
+  - 0.6
+  - 0.6
+  - 0.6
   attackDistance:
   - 4
   - 4

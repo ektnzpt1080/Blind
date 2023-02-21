@@ -28,7 +28,6 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] GameObject preattackEffectB; // 공격전 이펙트 B
     [SerializeField] float walkSpeed; //Boss가 움직이는 속도 (Walk)
     [SerializeField] float walkToPatternTime; //Boss가 Walk -> Pattern 에 들어가는 시간
-    [SerializeField] float walkToPatternDistance; //Boss가 Walk -> Pattern 에 들어가는 거리
     [SerializeField] float walkMaxTime; //Boss가 Walk -> Chase에 들어가는 시간
     [SerializeField] float chaseSpeed; //Boss가 움직이는 속도 (Chase)
     [SerializeField] float footprintCoolTime; //Footprint 간격시간
@@ -48,7 +47,7 @@ public class Boss1Behaviour : MonoBehaviour
     bool footprintEnable; //Boss Footprint 출력 여부
     Vector2 footprintDirection; //Footprint 방향
     int bossHP; // Boss HP
-    int bossStamina; // boss의 스태미나 (QTE)
+    [SerializeField] int bossStamina; // boss의 스태미나 (QTE)
     public int streak; // 당하고 있는 연속공격 수
     float lastDamaged;
     SpriteRenderer sr; //spriterenderer
@@ -173,38 +172,6 @@ public class Boss1Behaviour : MonoBehaviour
         }
     }
 
-    IEnumerator ShortWalk(){
-        PatternDamaged = false;
-        FootprintEnable(true);
-        enemystate = EnemyState.Idle;
-        float walkStartTime = Time.time;
-        
-        while(true){
-            if(PatternDamaged){
-                PatternDamaged = false;
-                yield break;
-            }
-            
-            Vector3 v;
-            Vector3 v1 = Vector3.Cross(transform.position - player.transform.position, Vector3.forward * 1);
-            Vector3 v2 = Vector3.Cross(transform.position - player.transform.position, Vector3.forward * -1);
-            float angle1 = Vector2.Angle(transform.position, v1);
-            float angle2 = Vector2.Angle(transform.position, v2);
-            if(angle1 > angle2) v = v1;
-            else v = v2;
-            
-            if(Time.time - walkStartTime > walkToPatternTime) {
-                StartCoroutine(Chase());
-                yield break;
-            }
-            else {
-                footprintDirection = v;
-                transform.Translate(new Vector3(v.x, v.y, 0).normalized * 2f * walkSpeed * Time.deltaTime);
-                yield return new WaitForFixedUpdate();
-            }
-        }
-    }
-
     IEnumerator Chase(){
         PatternDamaged = false;
         FootprintEnable(true);
@@ -228,11 +195,18 @@ public class Boss1Behaviour : MonoBehaviour
             }
         }
     }    
-    [SerializeField] GameObject backStepSprite;
+    [SerializeField] Sprite backStepSprite;
+/*
     IEnumerator BackStep(){
+        yield return new WaitForFixedUpdate();
+        GameManager.Instance.DestructAfterimage.Invoke();
         PatternDamaged = false;
         enemystate = EnemyState.BackStep;
         FootprintEnable(false);
+        GameObject sprite = MakePreAttackSprite(backStepSprite);
+        sprite.GetComponent<SpriteRenderer>().DOFade(0, backStepTime + 0.1f).OnComplete(() =>{
+            Destroy(sprite);
+        });
         float t = Time.time;
         Vector3 v = -VectorBtoP();
         while(t > Time.time - backStepTime){
@@ -242,10 +216,28 @@ public class Boss1Behaviour : MonoBehaviour
             }
             footprintDirection = v;
             transform.Translate(new Vector3(v.x, v.y, 0).normalized * backStepSpeed * Time.deltaTime);
+            sprite.transform.position = transform.position;
             yield return new WaitForFixedUpdate();
         }
         
         StartCoroutine(Chase());
+    }
+*/
+    public void BackStep(){
+        PatternDamaged = false;
+        enemystate = EnemyState.BackStep;
+        FootprintEnable(false);
+        GameObject sprite = MakePreAttackSprite(backStepSprite);
+        sprite.GetComponent<SpriteRenderer>().DOFade(0, backStepTime + 0.1f).OnComplete(() =>{
+            Destroy(sprite);
+        });
+        float t = Time.time;
+        Vector3 v = -VectorBtoP();
+        footprintDirection = v;
+        sprite.transform.DOMove(transform.position + new Vector3(v.x, v.y, 0).normalized * backStepSpeed, backStepTime).SetEase(Ease.OutCubic);
+        transform.DOMove(transform.position + new Vector3(v.x, v.y, 0).normalized * backStepSpeed, backStepTime).SetEase(Ease.OutCubic).OnComplete(() =>{
+            StartCoroutine(Walk());
+        });
     }
        
     public void FootprintEnable(bool tf){
@@ -261,16 +253,6 @@ public class Boss1Behaviour : MonoBehaviour
         if(afterimage != null) Destroy(afterimage);
     }
 
-    
-    public void CeasePattern(bool playerDamaged = false){
-        FootprintEnable(true);
-        footprintCoolTime = footprintCoolTimeOriginal;
-        StartCoroutine(ParticleDestruct());
-        //쳐맞음
-        if(playerDamaged) {
-            StartCoroutine(CeaseAndWalk(1.1f));
-        }
-    }
     bool alreadyWaiting;
     bool walkAgain;
     IEnumerator CeaseAndWalk(float f){
@@ -282,6 +264,7 @@ public class Boss1Behaviour : MonoBehaviour
             walkAgain = false;
             yield break;
         }
+        footprintCoolTime = footprintCoolTimeOriginal;
         StartCoroutine(Walk());
         alreadyWaiting = false;
     }
@@ -297,7 +280,7 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] float attackKnuckbackTime;
     //0.2
 
-    public void Damaged(bool QTEsuccess = false, int damage = 10){
+    public void Damaged(bool QTEsuccess = false, int damage = 15){
         if(enemystate == EnemyState.Idle){
             bossHP -= damage;
             GameObject md = MakeDamagedSprite(false);
@@ -345,11 +328,9 @@ public class Boss1Behaviour : MonoBehaviour
     public void StaminaDamaged(int damage = 10, bool red = false){
         bossStamina -= damage;
         if(bossStamina <= 0){
-            if( VectorBtoP().magnitude > 0.5f ){
+            if(VectorBtoP().magnitude > 0.5f ){
                 transform.position = player.transform.position - VectorBtoP().normalized * 1.5f;
             }
-            //하고있는 거 중단
-            //player의 공격 리스트 전부 삭제
             enemystate = EnemyState.QTEEnable;
             StartCoroutine(ParticleDestruct());
             GameManager.Instance.CameraSetting.PreZoomIn();
@@ -445,15 +426,19 @@ public class Boss1Behaviour : MonoBehaviour
         Vector3 startposition = transform.position;
         Vector3 v = VectorBtoP().normalized * maxdistance;
         transform.Translate(v);
+        
+        if(player.Zoomed() && VectorBtoP().magnitude > 0.5f ){
+            transform.position = player.transform.position - VectorBtoP().normalized * 1.5f;
+        }
 
     }
     
     //다음 패턴으로 넘어감 + 현재 자리에 공격 스프라이트 만듦
-    bool DoNextPattern(System.Action<float, float> Function, Pattern pattern, int pattern_num){
+    bool DoNextPattern(System.Action<float, float> Function, Pattern pattern, int pattern_num, bool inverse = false){
         if(nextPattern){
             nextPattern = false;
             Function(pattern.maxDashDistance[pattern_num], pattern.properDashDistance[pattern_num]);
-            MakeAttackSprite(pattern.attackSprites[pattern_num]);
+            MakeAttackSprite(pattern.attackSprites[pattern_num], inverse);
             return true;
         }
         return false;
@@ -490,6 +475,10 @@ public class Boss1Behaviour : MonoBehaviour
         for (i = 0 ; i < maxAttack ; i++){
             MakePreAttackEffect(pattern.attacktype[i]);
             yield return new WaitForSeconds(0.25f);
+            if(PatternDamaged) {
+                Destroy(preattack);
+                yield break;
+            }
             player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
             while(true){
                 if(PatternDamaged) {
@@ -506,10 +495,12 @@ public class Boss1Behaviour : MonoBehaviour
             if(enemystate == EnemyState.QTEEnable) yield break;
         }
 
-        StartCoroutine(CeaseAndWalk(1.5f));
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
+
     // 1 흰흰 - 흰
     IEnumerator Pattern1(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[1];
         int i;
@@ -521,7 +512,10 @@ public class Boss1Behaviour : MonoBehaviour
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[1]);
         yield return new WaitForSeconds(0.25f);
-
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
         for(i = 0; i < 2 ; i++){
             player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[0], pattern.attackDamage[0], pattern.stanbyTime[0], pattern.attacktype[0]);
             while(true){
@@ -542,6 +536,7 @@ public class Boss1Behaviour : MonoBehaviour
         i = 2;
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(0.25f);
+        
         player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
         while(true){
             if(DoNextPattern(AttackPattern1, pattern, i)){
@@ -555,94 +550,170 @@ public class Boss1Behaviour : MonoBehaviour
         }
         if(enemystate == EnemyState.QTEEnable) yield break;
 
-        StartCoroutine(BackStep());
+        yield return new WaitForSeconds(0.8f);
+        BackStep();
     }
-/*
+
 
     // 1 - 2 흰흰 - 흰흰 - 흰
     IEnumerator Pattern2(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[2];
         int i;
         
         i = 0;
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[0]);
         
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.2f);
-    
         MakePreAttackEffect(pattern.attacktype[0]);
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[1]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        yield return new WaitForSeconds(0.25f);
         
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
-        i = 1;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }        
+        for(i = 0; i < 2 ; i++){
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+            while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) yield break;
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;    
+        }
 
-        i = 2;
         MakePreAttackEffect(pattern.attacktype[2]);
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[3]);
-        
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
-        i = 3;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
+        yield return new WaitForSeconds(0.25f);
+
+        for(i = 2; i < 4 ; i++){
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+            while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) yield break;
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;    
+        }
+
         i = 4;
-        MakePreAttackEffect(pattern.attacktype[4]);                
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.25f);
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(DoNextPattern(AttackPattern1, pattern, i)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) {
+                    yield break;
+                }
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
 
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-
-        DefenselessStart();
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
 
-    // 3 흰 - 흰(엇박)
+    // 3 흰 - 흰(엇박)(빠른 엇박)
     IEnumerator Pattern3(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[3];
         int i;
-        int maxAttack = 2;
         
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
-
-        for(i = 0 ; i < maxAttack; i++){
-            isDamageStopPattern = pattern.damageStopPattern[i];
-
-            MakePreAttackEffect(pattern.attacktype[i]);
-            yield return new WaitForSeconds(pattern.stanbyTime[i]);
-            
-            AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-            MakeAttackSprite(pattern.attackSprites[i]);
+        i = 0;
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[i]);
+        MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.25f);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }        
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                if(i == 0) Destroy(preattack);
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern1, pattern, i)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
         }
-
+        if(enemystate == EnemyState.QTEEnable) yield break;
+    
+        i = 1;
+        MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.1f);
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                if(i == 0) Destroy(preattack);
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern1, pattern, i)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;        
+        
+        yield return new WaitForSeconds(0.3f);
         StartCoroutine(Chase());
     }
 
-    // 4 흰 - 옆으로 돌아서 흰
+    // 4 흰 돌진 - 옆으로 돌아서 흰 돌진
     IEnumerator Pattern4(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[4];
         int i;
         
         i = 0;
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
-
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[i]);
         MakePreAttackEffect(pattern.attacktype[i]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
-        AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i], true);
-        
+        yield return new WaitForSeconds(0.25f);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                if(i == 0) Destroy(preattack);
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern2, pattern, i, true)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
+
         i = 1;
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
         int direction = Random.Range(0,2) * 2 - 1;
@@ -650,56 +721,79 @@ public class Boss1Behaviour : MonoBehaviour
         if(moveposition.x > border.x || moveposition.x < -border.x || moveposition.y > border.y || moveposition.y < -border.y){
             moveposition = player.transform.position + Vector3.Cross(VectorBtoP(), Vector3.forward * - direction).normalized * pattern.attackDistance[i];
             if(moveposition.x > border.x || moveposition.x < -border.x || moveposition.y > border.y || moveposition.y < -border.y){
-                DefenselessStart();
+                StartCoroutine(CeaseAndWalk(1.5f));
                 yield break;
             }
         }
         transform.position = moveposition;
-        
-        i = 2;
-        
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[i]);
-        
-        MakePreAttackEffect(pattern.attacktype[i]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
 
-        AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i], true);
-        
-        StartCoroutine(ShortWalk());
+
+        i = 2;
+        GameObject preattack1 = MakePreAttackSprite(pattern.preAttackSprites[0]);
+        MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.25f);
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                if(i == 2) Destroy(preattack1);
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern2, pattern, i, true)){
+                if(i == 2) Destroy(preattack1);
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
+
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
 
     // 5 돌진 - (빨강 공격) (멀리서 공격)
     IEnumerator Pattern5(){
+        PatternDamaged = false;
         FootprintEnable(false);
         int i;
         Pattern pattern = boss1PatternList[5];
         
         i = 0;
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
-        
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[i]);
         MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.25f);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                if(i == 0) Destroy(preattack);
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern2, pattern, i, true)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
 
-        yield return new WaitForSeconds(pattern.stanbyTime[0]);
-        
-        AttackPattern2(pattern.maxDashDistance[0], pattern.attacktype[0], pattern.attackDamage[0]);
-        MakeAttackSprite(pattern.attackSprites[i], true);
-        DefenselessStart();
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
     
-    // 6 흰 - 흰 (멀리서 공격) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack)
+    // 6 흰 - 흰 (멀리서 공격) (멀리서 흰색 -> 발자국으로 가까워짐 -> attack) 폐기직전
     IEnumerator Pattern6(){
+        PatternDamaged = false;
         Pattern pattern = boss1PatternList[6];
         int i;
         i = 0;
-        float original_fpct = footprintCoolTime;
         footprintCoolTime = 0.15f;
         
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
-        
+        MakePreAttackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
         MakePreAttackEffect(pattern.attacktype[i]);
         yield return new WaitForSeconds(pattern.stanbyTime[i]);
-
         while(VectorBtoP().magnitude > pattern.properDashDistance[i]) {
             Vector3 v = VectorBtoP();
             footprintDirection = v;
@@ -707,189 +801,319 @@ public class Boss1Behaviour : MonoBehaviour
             yield return new WaitForFixedUpdate();
         }
         FootprintEnable(false);
-
-        footprintCoolTime = original_fpct;
+        footprintCoolTime = footprintCoolTimeOriginal;
         
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        i = 0;
+        if(PatternDamaged) {
+            yield break;
+        }
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern1, pattern, i)){
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
         
         i = 1;
         MakePreAttackEffect(pattern.attacktype[i]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        yield return new WaitForSeconds(0.25f);
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern1, pattern, i)){
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
 
-        StartCoroutine(BackStep());
+        yield return new WaitForSeconds(0.8f);
+        BackStep();
     }
- 
+
     // 7 흰흰흰 (빠르게)
     IEnumerator Pattern7(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[7];
         int i;
         
         i = 0;
-        
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.6f);
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[0]);
         
         MakePreAttackEffect(pattern.attacktype[0]);
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[1]);
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[2]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        yield return new WaitForSeconds(0.1f);
 
-        i = 1;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
-        i = 2;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
+        for(i = 0; i < 3 ; i++){
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+            while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) yield break;
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;    
+        }
 
-        DefenselessStart();
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
     
     // 8 백스텝 파랑 공격 (멀리 + 가까이서 패턴) 
     IEnumerator Pattern8(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[8];
-        
-        GameObject image = MakePreAattackSprite(pattern.preAttackSprites[0]);
+        int i;
 
+        i = 0;
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[0]);
         GameObject effect = MakePreAttackEffect(pattern.attacktype[0]);
-
+        
         Vector3 v = transform.position - VectorBtoP().normalized * pattern.maxDashDistance[0];
-        image.transform.DOMove(v, pattern.stanbyTime[0]).SetEase(Ease.OutSine).OnComplete(() => {
-            Destroy(image);
+        preattack.transform.DOMove(v, pattern.stanbyTime[0]).SetEase(Ease.OutSine).OnComplete(() => {
+            Destroy(preattack);
         });
         effect.transform.DOMove(v, pattern.stanbyTime[0]).SetEase(Ease.OutSine);
         transform.DOMove(v, pattern.stanbyTime[0]).SetEase(Ease.OutSine);
-        yield return new WaitForSeconds(pattern.stanbyTime[0] * 3/4);
         
-        player.AttackedBlue(transform.position, player.transform.position, pattern.attackDamage[0], 0.3f);
-        StartCoroutine(ShortWalk());
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);     
+        while(true){
+            if(PatternDamaged) {
+                yield break;
+            }
+            if(nextPattern){
+                nextPattern = false;
+                if(playerDamaged){
+                    playerDamaged = false;
+                    if(pattern.damageStopPattern[i]){
+                        StartCoroutine(CeaseAndWalk(1.5f));
+                        yield break;
+                    } 
+                }
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break; 
+
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
-    
+
     // 9 흰흰-흰흰-빨 (2 강화) 
     IEnumerator Pattern9(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[9];
         int i;
         
         i = 0;
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0] + 0.2f);
-
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[0]);
+        
         MakePreAttackEffect(pattern.attacktype[0]);
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[1]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
-        i = 1;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
+        yield return new WaitForSeconds(0.25f);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
+        for(i = 0; i < 2 ; i++){
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+            while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) yield break;
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;    
+        }
 
-        i = 2;
         MakePreAttackEffect(pattern.attacktype[2]);
         yield return new WaitForSeconds(0.2f);
         MakePreAttackEffect(pattern.attacktype[3]);
-        
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
-        i = 3;
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        AttackPattern1(pattern.maxDashDistance[i], pattern.properDashDistance[i], pattern.attackDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i]);
-        
+        yield return new WaitForSeconds(0.25f);
+
+        if(PatternDamaged) yield break;
+        for(i = 2; i < 4 ; i++){
+            player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+            while(true){
+                if(PatternDamaged) {
+                    if(i == 0) Destroy(preattack);
+                    yield break;
+                }
+                if(DoNextPattern(AttackPattern1, pattern, i)){
+                    if(i == 0) Destroy(preattack);
+                    if(IsPlayerDamaged(pattern, i)) yield break;
+                    break;
+                }
+                yield return new WaitForFixedUpdate();
+            }
+            if(enemystate == EnemyState.QTEEnable) yield break;    
+        }
+
         i = 4;
-        MakePreAttackEffect(pattern.attacktype[4]);                
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
+        MakePreAttackEffect(pattern.attacktype[i]);
+        yield return new WaitForSeconds(0.25f);
+        if(PatternDamaged) yield break;
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(DoNextPattern(AttackPattern2, pattern, i)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) {
+                    yield break;
+                }
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
 
-        AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i], true);
-
-        DefenselessStart();
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
 
     // 세부조정
     // 10 흰 - (흰?파) - (흰?파) - (흰?파) (4 강화) 
     IEnumerator Pattern10(){
+        PatternDamaged = false;
         FootprintEnable(false);
         Pattern pattern = boss1PatternList[10];
         int i;
         
         i = 0;
-        MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[0]);
-
+        GameObject preattack = MakePreAttackSprite(pattern.preAttackSprites[0]);
         MakePreAttackEffect(pattern.attacktype[i]);
-        yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
-        AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-        MakeAttackSprite(pattern.attackSprites[i], true);
-        
-        for (int j = 0 ; j < 3; j++){
+        yield return new WaitForSeconds(0.25f);
+        if(PatternDamaged) {
+            Destroy(preattack);
+            yield break;
+        }
+        player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+        while(true){
+            if(PatternDamaged) {
+                if(i == 0) Destroy(preattack);
+                yield break;
+            }
+            if(DoNextPattern(AttackPattern2, pattern, i, true)){
+                if(i == 0) Destroy(preattack);
+                if(IsPlayerDamaged(pattern, i)) yield break;
+                break;
+            }
+            yield return new WaitForFixedUpdate();
+        }
+        if(enemystate == EnemyState.QTEEnable) yield break;
+
+        for(int j = 0 ; j < 3; j++){
             i = 1;
+            yield return new WaitForSeconds(pattern.stanbyTime[i]);
+            transform.DOKill(false);
             int direction = Random.Range(0,2) * 2 - 1;
             Vector3 moveposition = player.transform.position + Vector3.Cross(VectorBtoP(), Vector3.forward * direction).normalized * pattern.attackDistance[i];
             if(moveposition.x > border.x || moveposition.x < -border.x || moveposition.y > border.y || moveposition.y < -border.y){
                 moveposition = player.transform.position + Vector3.Cross(VectorBtoP(), Vector3.forward * - direction).normalized * pattern.attackDistance[i];
                 if(moveposition.x > border.x || moveposition.x < -border.x || moveposition.y > border.y || moveposition.y < -border.y){
-                    DefenselessStart();
+                    StartCoroutine(CeaseAndWalk(1.5f));
                     yield break;
                 }
             }
             transform.position = moveposition;
-        
-            yield return new WaitForSeconds(pattern.stanbyTime[i]);
-        
+
             int wb = Random.Range(0,2);
-            if (wb == 0 ) {
-                //w
-                i = 2;    
-                MakePreAattackSprite(pattern.preAttackSprites[0], pattern.stanbyTime[i]);
-        
+            if(wb == 0){
+                i = 2;
+                GameObject preattack1 = MakePreAttackSprite(pattern.preAttackSprites[0]);
                 MakePreAttackEffect(pattern.attacktype[i]);
-                yield return new WaitForSeconds(pattern.stanbyTime[i]);
-                
-                AttackPattern2(pattern.maxDashDistance[i], pattern.attacktype[i], pattern.attackDamage[i]);
-                MakeAttackSprite(pattern.attackSprites[i], true);
+                yield return new WaitForSeconds(0.25f);
+                player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+                while(true){
+                    if(PatternDamaged) {
+                        if(i == 2) Destroy(preattack1);
+                        yield break;
+                    }
+                    if(DoNextPattern(AttackPattern2, pattern, i, true)){
+                        if(i == 2) Destroy(preattack1);
+                        if(IsPlayerDamaged(pattern, i)) yield break;
+                        break;
+                    }
+                    yield return new WaitForFixedUpdate();
+                }
+                if(enemystate == EnemyState.QTEEnable) yield break; 
             }
             else{
-                //b
                 i = 3;
-                GameObject image = MakePreAattackSprite(pattern.preAttackSprites[1]);
+                GameObject preattack1 = MakePreAttackSprite(pattern.preAttackSprites[1]);
                 GameObject effect = MakePreAttackEffect(pattern.attacktype[i]);
+                
                 Vector3 v = transform.position - VectorBtoP().normalized * pattern.maxDashDistance[i];
-                image.transform.DOMove(v, pattern.stanbyTime[i] - 0.05f).SetEase(Ease.OutSine).OnComplete(() => {
-                    Destroy(image);
+                preattack1.transform.DOMove(v, pattern.stanbyTime[i]).SetEase(Ease.OutSine).OnComplete(() => {
+                    Destroy(preattack1);
                 });
-                effect.transform.DOMove(v, pattern.stanbyTime[i] - 0.05f).SetEase(Ease.OutSine);
-                transform.DOMove(v, pattern.stanbyTime[i] - 0.05f).SetEase(Ease.OutSine);
-                player.AttackedBlue(transform.position, player.transform.position, pattern.attackDamage[i], 0.7f);
+                effect.transform.DOMove(v, pattern.stanbyTime[i]).SetEase(Ease.OutSine);
+                transform.DOMove(v, pattern.stanbyTime[i]).SetEase(Ease.OutSine);
                 
-                yield return new WaitForSeconds(pattern.stanbyTime[i]);
-                
+                player.AttackListAdd(transform.position, VectorBtoP().normalized, pattern.attackDistance[i], pattern.attackDamage[i], pattern.stanbyTime[i], pattern.attacktype[i]);
+                while(true){
+                    if(PatternDamaged) {
+                        yield break;
+                    }
+                    if(nextPattern){
+                        nextPattern = false;
+                        if(playerDamaged){
+                            playerDamaged = false;
+                            if(pattern.damageStopPattern[i]){
+                                StartCoroutine(CeaseAndWalk(1.5f));
+                                yield break;
+                            } 
+                        }
+                        break;
+                    }
+                    yield return new WaitForFixedUpdate();
+                }
+                if(enemystate == EnemyState.QTEEnable) yield break; 
             }
         }
-        StartCoroutine(ShortWalk());
+        StartCoroutine(CeaseAndWalk(1.2f));
     }
-*/
+
+    
     public int GetBossHP(){
         return bossHP;
     }
-
+    public int GetBossHPMax(){
+        return bossHPMax;
+    }
     public int GetBossStamina(){
         return bossStamina;
     }

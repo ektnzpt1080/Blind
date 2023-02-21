@@ -18,7 +18,7 @@ MonoBehaviour:
   stanbyTime:
   - 0.9
   attackDistance:
-  - 0
+  - 6.5
   maxDashDistance:
   - 6.5
   properDashDistance:

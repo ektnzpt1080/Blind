@@ -31,7 +31,11 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] float playerRunningSpeed; //Player 달리기 속도
     [SerializeField] float playerRunningStaminaSpendingSpeed; //Player 달리기 스태미나 소비 속도
     [SerializeField] float playerStaminaMax = 4.0f; //Player 스태미나 Max
-    [SerializeField] int playerHealth = 100; //Player 체력
+    [SerializeField] float playerHealth; //Player 체력
+    [SerializeField] float playerMaxHealth; //Player Max 체력
+    [SerializeField] float playerRecoveryHealth; //Player 회복할 수 있는 체력 
+    [SerializeField] float recoverySpeed; //Player 체력 회복 속도
+    [SerializeField] float recoveryTime; //Player 체력 회복 기다릴 시간
     [SerializeField] float knuckbackSmall = 0.2f; // 넉백 거리 (작음, 가드, 패리 성공)
     [SerializeField] float knuckbackBig = 1.0f; // 넉백 거리 (큼, 데미지 당함)
     [SerializeField] float attackDashDistance; // 공격 대시 사거리
@@ -62,7 +66,7 @@ public class PlayerBehaviour : MonoBehaviour
     //건드리면 안됨
     float lastRollTime; //Player가 마지막으로 구르기를 한 시간
     float lastStaminaSpendTime; //Player가 마지막으로 구르거나 달린 시간 (스태미나 회복용)
-    float guardTime; //Player가 가드하고 있는 시간
+    float lastDamagedTime; //Player가 마지막으로 맞은 시간
     float playerStamina; //Player 스태미나
     [SerializeField] PlayerState playerstate; //PlayerState
     Vector2 moveDirection; // 움직이는 방향
@@ -70,8 +74,8 @@ public class PlayerBehaviour : MonoBehaviour
     bool parryable; //패리 가능 상태
     float lastParryTime; // 마지막으로 패리가 된 상태
     List<Attack> attackList;
-    [SerializeField] float guardGauge;
-    [SerializeField] float attackGauge;
+    float guardGauge;
+    float attackGauge;
 
     Camera mainCamera;
     SpriteRenderer sr;
@@ -81,9 +85,6 @@ public class PlayerBehaviour : MonoBehaviour
     float zoomedTime; //줌인 된 시간
     Vector3 QTEStartpoint; // QTE 보조용 벡터
 
-
-    
-
     // Start is called before the first frame update
     void Start()
     {
@@ -91,11 +92,11 @@ public class PlayerBehaviour : MonoBehaviour
         pQTE = GetComponent<PlayerQTE>();
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
-        guardTime = 0;
-        guardGauge = 2.05f;
+        guardGauge = 1.01f;
         lastRollTime = Time.time;
         lastParryTime = Time.time;
-
+        playerHealth = playerMaxHealth;
+        playerRecoveryHealth = playerMaxHealth;
         lastStaminaSpendTime = Time.time;
         playerStamina = playerStaminaMax;
         attackCollider = attackRange.GetComponent<Collider2D>();
@@ -195,8 +196,14 @@ public class PlayerBehaviour : MonoBehaviour
         if(playerstate != PlayerState.Attack) {
             attackGauge = 0;
             chargeComplete = false;
-
         }
+
+        //HP 회복
+        if(lastDamagedTime + recoveryTime < Time.time){
+            playerHealth += recoverySpeed * Time.deltaTime;
+            if(playerHealth > playerRecoveryHealth) playerHealth = playerRecoveryHealth;
+        }
+
 
         moveDirection = Vector2.zero;
         if (Input.GetKey(KeyCode.D)) moveDirection.x = 1;
@@ -235,6 +242,8 @@ public class PlayerBehaviour : MonoBehaviour
         }
         else if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
             attackList.RemoveAt(0);
+            boss.NextPattern(false);
+            GainGuardGauge(0.37f);
             Instantiate(parryEffect, transform.position + V2toV3(mouseVec).normalized * 0.4f, Quaternion.identity);
             InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
         }
@@ -250,7 +259,7 @@ public class PlayerBehaviour : MonoBehaviour
         cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
         List<Collider2D> res = new List<Collider2D>(); 
         if(attackCollider.OverlapCollider(cf2d, res) > 0) {
-            boss.Damaged();
+            boss.Damaged( 25 );
             attackList = new List<Attack>();
         }
         transform.DOKill(false);
@@ -266,10 +275,27 @@ public class PlayerBehaviour : MonoBehaviour
         lastStaminaSpendTime = Time.time;
         playerstate = PlayerState.Roll;
         playerStamina -= 1.0f;
-        for(int i = 0 ; i < playerRollTime / Time.deltaTime; i++){
+        for(int i = 0 ; i < playerRollTime / Time.deltaTime / 2; i++){
             transform.Translate(V2toV3(v).normalized * playerRollSpeed * Time.deltaTime);
             yield return new WaitForFixedUpdate();
         }
+
+        if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.red){
+            Attack a = attackList[0];
+            if(Vector2.Angle(-attackList[0].attackDirection, v) < 75) {
+                attackList.RemoveAt(0);
+                boss.NextPattern(false);
+                boss.StaminaDamaged(30, true);
+                transform.DOMove(V2toV3(rollDirection).normalized, 0.8f).SetRelative(true);
+                rollDirection = Vector2.zero;
+                yield break;
+            }
+        }
+        for(int i = 0 ; i < playerRollTime / Time.deltaTime / 2; i++){
+            transform.Translate(V2toV3(v).normalized * playerRollSpeed * Time.deltaTime);
+            yield return new WaitForFixedUpdate();
+        }
+
         if(playerstate == PlayerState.Roll){
             if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.Space)) playerstate = PlayerState.Running;
             else playerstate = PlayerState.Idle;
@@ -285,10 +311,10 @@ public class PlayerBehaviour : MonoBehaviour
                 InstantiateParryEffect(transform.position - attackList[0].attackDirection.normalized * 0.5f);
                 ParryNormalize();
                 GuardKnuckback(attackList[0].attackDirection.normalized);
-                boss.StaminaDamaged();
-                boss.NextPattern(false);
                 attackList.RemoveAt(0);
-                guardGauge += 0.23f;
+                boss.NextPattern(false);
+                boss.StaminaDamaged();
+                GainGuardGauge(0.23f);
             }
         }
     }
@@ -316,7 +342,6 @@ public class PlayerBehaviour : MonoBehaviour
     //쿠나이 돌리기
     public void InstantiateBlueObject2(Vector3 pos, Vector3 bAttackDirection){
         GameObject bo = Instantiate(blueObject, pos, Quaternion.identity);
-        Transform mask = bo.transform.GetChild(0);
         SpriteRenderer sr = bo.GetComponent<SpriteRenderer>();
         int direction;
         if(bAttackDirection.x > 0) direction = 1;
@@ -387,11 +412,16 @@ public class PlayerBehaviour : MonoBehaviour
         attackList = new List<Attack>();
     }
 
+    public bool Zoomed(){
+        return zoomed;
+    }
+
     public void EndZoom(){
         if(zoomed && playerstate != PlayerState.QTE) {
             GameManager.Instance.CameraSetting.SmoothEndZoom();
             zoomed = false;
             boss.SkipQTE();
+            playerstate = PlayerState.Idle;
         }
     }
 
@@ -413,55 +443,54 @@ public class PlayerBehaviour : MonoBehaviour
         if(attackList.Count != 0){
             if(attackList[0].time < Time.time){
                 Attack a = attackList[0];
+                Debug.Log(a.time); 
                 if(a.attacktype == Attacktype.white){
                     float angle = Vector2.Angle(mouseVec, -a.attackDirection);
                     if((a.startPoint - transform.position).magnitude < a.attackDistance){
                         if (playerstate == PlayerState.Guard && angle < 75) {
-                            DamagedSmall(a.damage / 2, a.attackDirection.normalized);
+                            DamagedSmall(a.damage / 3, a.attackDirection.normalized);
                             boss.NextPattern(false);
-                            guardGauge += 0.11f;
+                            GainGuardGauge(0.11f);
                         }
                         else if( DamageAvailiableState() ||  playerstate == PlayerState.Guard){
                             DamagedBig(a.damage, a.attackDirection.normalized);
                             boss.NextPattern(true);
                         }
-                        else {
-                            boss.NextPattern(false);
-                        }
+                        else boss.NextPattern(false);
                     }
-                    else{
-                        boss.NextPattern(false);
-                    }
+                    else boss.NextPattern(false);
                 }
                 else if(a.attacktype == Attacktype.red){
-                    if(DamageAvailiableState() ||  playerstate == PlayerState.Guard) {
-                    RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, LayerMask.GetMask("Player"));
-                        if(hit.collider != null){
-                            DamagedBig(a.damage, -a.attackDirection);
-                            boss.NextPattern(true); 
-                        }
-                        else{
-                            boss.NextPattern(false);
-                        }
+                    if((DamageAvailiableState() || playerstate == PlayerState.Guard) && (a.startPoint - transform.position).magnitude < a.attackDistance ) {
+                        DamagedBig(a.damage, a.attackDirection.normalized);
+                        boss.NextPattern(true);
                     }
-                    else{
-                        boss.NextPattern(false);
-                    }
+                    else boss.NextPattern(false);
                 }   
                 else if(a.attacktype == Attacktype.blue){
                     if(DamageAvailiableState() || playerstate == PlayerState.Guard) {
-                    RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, LayerMask.GetMask("Player"));
+                    RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, 100, LayerMask.GetMask("Player"));
                         if(hit.collider != null){
+                            GameObject bo = Instantiate(blueObject, boss.transform.position, Quaternion.Euler(0,0,Vector2.SignedAngle(Vector2.down, a.attackDirection)));
+                            bo.transform.DOMove(a.attackDirection.normalized * 50f, 15f).SetRelative().SetSpeedBased().OnComplete(() => {
+                                Destroy(bo);
+                            });
                             DamagedBig(a.damage, a.attackDirection);
-                            boss.NextPattern(true); //보스 쪽에 패턴 멈추라고 신호를 줌
-                            // 맞았다는 신호 + 애니메이션 재생 
-                            // 아마 List에 있는 blue 전부 지워버리고 -> boss 쪽 새 패턴 추출하는 식으로 할 듯?
+                            boss.NextPattern(true); 
                         }
                         else{
+                            GameObject bo = Instantiate(blueObject, boss.transform.position, Quaternion.Euler(0,0,Vector2.SignedAngle(Vector2.down, a.attackDirection)));
+                            bo.transform.DOMove(a.attackDirection.normalized * 50f, 15f).SetRelative().SetSpeedBased().OnComplete(() => {
+                                Destroy(bo);
+                            });
                             boss.NextPattern(false);
                         }
                     }
                     else{
+                        GameObject bo = Instantiate(blueObject, boss.transform.position, Quaternion.Euler(0,0,Vector2.SignedAngle(Vector2.down, a.attackDirection)));
+                        bo.transform.DOMove(a.attackDirection.normalized * 50f, 15f).SetRelative().SetSpeedBased().OnComplete(() => {
+                            Destroy(bo);
+                        });
                         boss.NextPattern(false);
                     }
                 }
@@ -473,13 +502,14 @@ public class PlayerBehaviour : MonoBehaviour
     // 클린 히트했을때
     public void DamagedBig(int damage, Vector3 vec){
         GameManager.Instance.DestructChargeParticles.Invoke();
-        guardTime = 0;
         playerstate = PlayerState.Damaged;
         playerHealth -= damage;
         if(playerHealth <= 0 ){
             // TODO 게임오버 처리
             return;
         }
+        playerRecoveryHealth -= damage/3f;
+        lastDamagedTime = Time.time;
         transform.DOKill(false);
         transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
             playerstate = PlayerState.Idle;
@@ -489,6 +519,11 @@ public class PlayerBehaviour : MonoBehaviour
     //guard 했을때의 데미지 + 넉백 
     public void DamagedSmall(int damage, Vector3 vec){
         playerHealth -= damage;
+        if(playerHealth <= 0 ){
+            // TODO 게임오버 처리
+            return;
+        }
+        lastDamagedTime = Time.time;
         GuardKnuckback(vec);
     }
 
@@ -503,13 +538,31 @@ public class PlayerBehaviour : MonoBehaviour
             if(playerstate == PlayerState.Attack) playerstate = PlayerState.Idle;
         });
     }
-
-    public int GetPlayerHP(){
-        return playerHealth;
+    public void GainGuardGauge(float f){
+        guardGauge += f;
+        if(guardGauge > 4) guardGauge = 4;
     }
 
+    public float GetPlayerHP(){
+        return playerHealth;
+    }
+    public float GetPlayerMaxHP(){
+        return playerMaxHealth;
+    }
     public float GetPlayerStamina(){
         return playerStamina;
+    }
+    public float GetGuardGauge(){
+        return guardGauge;
+    }
+    public float GetAttackGauge(){
+        return attackGauge;
+    }
+    public float GetMaxHealth(){
+        return playerMaxHealth;
+    }
+    public float GetRecoveryHealth(){
+        return playerRecoveryHealth;
     }
     
     //For Debug

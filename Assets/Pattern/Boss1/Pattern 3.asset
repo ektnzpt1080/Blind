@@ -14,19 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   explanation: W-fast W
   attacktype: 0000000000000000
-  startDistance: 2.5
+  startDistance: 1.5
   stanbyTime:
-  - 0.8
-  - 0.5
+  - 0.6
+  - 0.4
   attackDistance:
-  - 2
-  - 2
+  - 4
+  - 4
   maxDashDistance:
   - 2.8
-  - 0
+  - 2
   properDashDistance:
   - 1.5
-  - 0.2
+  - 0.8
   damageStopPattern: 0101
   preAttackSprites:
   - {fileID: 2022059543, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}

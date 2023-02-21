@@ -16,13 +16,13 @@ MonoBehaviour:
   attacktype: 000000000000000000000000
   startDistance: 2.5
   stanbyTime:
-  - 0.8
+  - 0.6
   - 0.3
   - 0.3
   attackDistance:
-  - 2
-  - 2.2
-  - 2.4
+  - 4
+  - 4.2
+  - 4.4
   maxDashDistance:
   - 2
   - 0

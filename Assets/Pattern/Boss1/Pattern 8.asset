@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   explanation: backstep B
   attacktype: 02000000
-  startDistance: 3.5
+  startDistance: 4
   stanbyTime:
   - 0.8
   attackDistance:
   - 0
   maxDashDistance:
-  - 2.1
+  - 1.9
   properDashDistance:
   - 0
   damageStopPattern: 01

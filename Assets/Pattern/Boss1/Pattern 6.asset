@@ -19,14 +19,14 @@ MonoBehaviour:
   - 0.8
   - 0.8
   attackDistance:
-  - 2
-  - 2
+  - 3
+  - 3
   maxDashDistance:
   - 2
   - 2
   properDashDistance:
-  - 1.5
-  - 1.5
+  - 1.7
+  - 1.2
   damageStopPattern: 0101
   preAttackSprites:
   - {fileID: 554093288, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
