@@ -4,22 +4,22 @@ using System.Linq;
 using UnityEngine;
 using DG.Tweening;
 using Attacktype = Pattern.AttackType;
+using ST = AudioManager.SoundType;
 using UnityEngine.SceneManagement;
 
 public class PlayerBehaviour : MonoBehaviour
 {
-    
     enum PlayerState
     {
-        Idle,
-        Attack,
-        Damaged,
-        Roll,
-        Running,
-        Guard,
-        QTE,
-        OnlyAttack,
-        Dead
+        Idle, //가는 방향
+        Attack, //마우스 방향
+        Damaged, // 데미지 받은 방향
+        Roll, // 가는 방향
+        Running, // 가는 방향
+        Guard, //마우스 방향
+        QTE, // 돌진 방향
+        OnlyAttack, // 보스 방향
+        Dead // 무조건 오른쪽
     }
 
     //건드릴 것
@@ -77,6 +77,7 @@ public class PlayerBehaviour : MonoBehaviour
     List<Attack> attackList;
     float guardGauge;
     float attackGauge;
+    bool chargeComplete = false;
 
     Camera mainCamera;
     SpriteRenderer sr;
@@ -86,6 +87,7 @@ public class PlayerBehaviour : MonoBehaviour
     float zoomedTime; //줌인 된 시간
     Vector3 QTEStartpoint; // QTE 보조용 벡터
     Animator animator;
+    AudioSource audiosource;
 
     // Start is called before the first frame update
     void Start()
@@ -93,9 +95,10 @@ public class PlayerBehaviour : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
         pQTE = GetComponent<PlayerQTE>();
         animator = GetComponent<Animator>();
+        audiosource = GetComponent<AudioSource>();
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
-        guardGauge = 4f;
+        guardGauge = 2.5f;
         lastRollTime = Time.time;
         lastParryTime = Time.time;
         playerHealth = playerMaxHealth;
@@ -104,6 +107,7 @@ public class PlayerBehaviour : MonoBehaviour
         playerStamina = playerStaminaMax;
         attackCollider = attackRange.GetComponent<Collider2D>();
         attackList = new List<Attack>();
+        chargeComplete = false;
 
     }
 
@@ -113,7 +117,7 @@ public class PlayerBehaviour : MonoBehaviour
     {
         //움직임, 공격, 방어 등등
         PlayerControl();
-
+        PlayerXflip();
         //패링 회복 관련
         if (!parryable)
         {
@@ -146,42 +150,50 @@ public class PlayerBehaviour : MonoBehaviour
         float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
         attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
 
+        if(Input.GetKeyDown(KeyCode.C)) {
+            Time.timeScale = 0;
+        }
+        if(Input.GetKeyDown(KeyCode.V)){
+            Time.timeScale = 1;
+        }
+
         //PlayerColor();
     }
 
 
-    bool chargeComplete = false;
-
+    bool ismoving; // move 효과음 관련
     void PlayerControl()
     {
+        ismoving = false; //아무튼 false일 가능성이 높음
+
         if (Input.GetMouseButtonDown(0))
         {
             Attack();
             EndZoom();
-            
         }
-        else if (Input.GetMouseButton(0)){
+        if (Input.GetMouseButton(0)){
             if(playerstate == PlayerState.Attack){
                 attackGauge += Time.deltaTime / 1.2f;
                 if(attackGauge > guardGauge) attackGauge = guardGauge;
                 if(attackGauge > 1f && !chargeComplete) {
                     chargeComplete = true;
+                    GameManager.Instance.AudioManager.Play(ST.charge_complete);
                     Instantiate(chargeAttackComplete, this.transform);
                 }
             }
         }
-        else if(Input.GetMouseButtonUp(0)){
-            GameManager.Instance.DestructChargeParticles.Invoke();
+        if(Input.GetMouseButtonUp(0)){
             if(guardGauge > 1f && attackGauge > 1f) {
                 guardGauge -= 1;
                 AttackDash();
             } 
             else if(playerstate == PlayerState.Attack) {
+                GameManager.Instance.DestructChargeParticles.Invoke();
                 playerstate = PlayerState.Idle;
                 animator.SetTrigger("Idle");
             }
         }
-        else if (Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1))
         {
             if (playerstate == PlayerState.Idle)
             {
@@ -191,11 +203,10 @@ public class PlayerBehaviour : MonoBehaviour
                     lastParryTime = Time.time;
                     parryable = false;
                     Parrying();
-                    Debug.Log("Parrying block : " + Time.time);
                 }
             }
         }
-        else if (Input.GetMouseButtonUp(1))
+        if (Input.GetMouseButtonUp(1))
         {
             if (playerstate == PlayerState.Guard) {
                 playerstate = PlayerState.Idle;
@@ -237,32 +248,60 @@ public class PlayerBehaviour : MonoBehaviour
 
         if (playerstate == PlayerState.Idle)
         {
-            if(moveDirection.x != 0 || moveDirection.y != 0) animator.SetBool("Move", true);
-            else animator.SetBool("Move", false);
+            if(moveDirection.x != 0 || moveDirection.y != 0) {
+                ismoving = true;
+                animator.SetBool("Move", true);
+            }
+            else {
+                animator.SetBool("Move", false);
+            }
             transform.Translate(V2toV3(moveDirection).normalized * playerMoveSpeed * Time.deltaTime);
             
         }
         else if(playerstate == PlayerState.Running){
+            ismoving = true;
             animator.SetBool("Move", true);
             transform.Translate(V2toV3(moveDirection).normalized * playerRunningSpeed * Time.deltaTime);
             lastStaminaSpendTime = Time.time;
             playerStamina -= playerRunningStaminaSpendingSpeed * Time.deltaTime;
             if(playerStamina < 0 || (moveDirection.x == 0 && moveDirection.y == 0)) playerstate = PlayerState.Idle;
         }
+
+        audiosource.enabled = ismoving;
+    }
+
+    public void PlayerXflip(){
+        if(playerstate == PlayerState.Idle || playerstate == PlayerState.Roll || playerstate == PlayerState.Running){
+            if(moveDirection.x > 0) sr.flipX = false;
+            else if (moveDirection.x < 0) sr.flipX = true;
+        }
+        else if(playerstate == PlayerState.Attack || playerstate == PlayerState.Guard){
+            if(mouseVec.x > 0) sr.flipX = false;
+            else sr.flipX = true;
+        }
+        else if(playerstate == PlayerState.Dead){
+            sr.flipX = false;
+        }
+    }
+
+    public void PlayerXflip(bool tf){
+        sr.flipX = tf;
     }
 
     public void Attack(){
-        if(playerstate == PlayerState.OnlyAttack && Vector2.Angle(boss.transform.position - transform.position, mouseVec) < 75){
+        if(playerstate == PlayerState.OnlyAttack){
+            GameManager.Instance.AudioManager.Play(ST.streak);
             animator.SetTrigger("Attack");
             boss.Damaged(25);
             if(playerstate != PlayerState.QTE){
                 transform.DOKill(false);
-                transform.DOMove(transform.position + V2toV3(mouseVec).normalized * 0.5f, 0.2f).OnComplete(() => {
+                transform.DOMove(transform.position + (boss.transform.position - transform.position).normalized * 0.5f, 0.2f).OnComplete(() => {
                     animator.SetTrigger("Idle");
                 });
             }
         }
         else if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
+            GameManager.Instance.AudioManager.Play(ST.parrying);
             animator.SetTrigger("BlueGuard");
             attackList.RemoveAt(0);
             boss.NextPattern(false);
@@ -270,15 +309,19 @@ public class PlayerBehaviour : MonoBehaviour
             Instantiate(parryEffect, transform.position + V2toV3(mouseVec).normalized * 0.4f, Quaternion.identity);
             InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
         }
-        else if(AttackAvailiableState()) {
+        else if(AttackAvailiableState() && guardGauge > 1f) {
             animator.SetTrigger("AttackReady");
             playerstate = PlayerState.Attack;
             if(guardGauge > 1f) Instantiate(chargeAttackEffect, this.transform);
+        }
+        else if(AttackAvailiableState() && guardGauge <= 1f) {
+            GameManager.Instance.UIManager.FireNotEnough();
         }
     }
 
     //공격할 때 나오는 대시
     public void AttackDash(){
+        GameManager.Instance.AudioManager.Play(ST.charge_attack);
         animator.SetTrigger("Attack");
         ContactFilter2D cf2d = new ContactFilter2D();
         cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
@@ -312,6 +355,7 @@ public class PlayerBehaviour : MonoBehaviour
         if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.red){
             Attack a = attackList[0];
             if(Vector2.Angle(-attackList[0].attackDirection, v) < 75) {
+                GameManager.Instance.AudioManager.Play(ST.dash);
                 animator.SetTrigger("SpecialAttack");
                 attackList.RemoveAt(0);
                 boss.NextPattern(false);
@@ -319,6 +363,7 @@ public class PlayerBehaviour : MonoBehaviour
                 transform.DOMove(V2toV3(rollDirection).normalized, 0.8f).SetRelative(true);
                 rollDirection = Vector2.zero;
                 yield break;
+                
             }
         }
 
@@ -340,6 +385,7 @@ public class PlayerBehaviour : MonoBehaviour
     }
 
     public void Parrying(){
+        animator.SetTrigger("Parrying");
         if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.white){
             Attack a = attackList[0];
             if(Vector2.Angle(-attackList[0].attackDirection, mouseVec) < 75) {
@@ -350,6 +396,7 @@ public class PlayerBehaviour : MonoBehaviour
                 boss.NextPattern(false);
                 boss.StaminaDamaged();
                 GainGuardGauge(0.23f);
+                GameManager.Instance.AudioManager.Play(ST.parrying);
             }
         }
     }
@@ -361,8 +408,7 @@ public class PlayerBehaviour : MonoBehaviour
 
     public bool AttackAvailiableState()
     {
-        return playerstate == PlayerState.Idle || playerstate == PlayerState.Running || 
-            playerstate == PlayerState.Guard;
+        return playerstate == PlayerState.Idle || playerstate == PlayerState.Running;
     }
 
     public bool DamageAvailiableState(){
@@ -392,10 +438,6 @@ public class PlayerBehaviour : MonoBehaviour
             Destroy(bo);
         });
         sequence.Play();
-    }
-
-    public void PreQTE(){
-        playerstate = PlayerState.OnlyAttack;
     }
 
     int lastmove;
@@ -436,20 +478,29 @@ public class PlayerBehaviour : MonoBehaviour
         else if(i == 2) animator.SetTrigger("SP3");
         lastmove = i;
         
+        if(isSuccess) GameManager.Instance.AudioManager.Play(ST.streak);
+        else GameManager.Instance.AudioManager.Play(ST.parrying);
+        
         if(firstcall) QTEStartpoint = transform.position;
         Vector3 d = (boss.transform.position - QTEStartpoint).normalized * QTEDashDistance;
         float delta = Random.Range(-60f, 60f) * Mathf.Deg2Rad;
         Vector3 rotated = new Vector2(d.x *  Mathf.Cos(delta) - d.y * Mathf.Sin(delta), d.x * Mathf.Sin(delta) + d.y * Mathf.Cos(delta));
         
+        if(d.x > 0) PlayerXflip(false);
+        else PlayerXflip(true);
+
         transform.DOKill(false);
         QTEStartpoint = boss.transform.position + rotated;
         transform.DOMove(QTEStartpoint, QTEDashTime).SetEase(Ease.OutQuint);
-        if(!isSuccess) {
-            float r = Random.Range(0f, 360f * Mathf.Deg2Rad);
-            Instantiate(parryEffect, new Vector3(boss.transform.position.x + 0.8f * Mathf.Cos(r), boss.transform.position.y + 0.8f * Mathf.Sin(r), 0), Quaternion.identity);
-        }
+        float r = Random.Range(0f, 360f * Mathf.Deg2Rad);
+        Instantiate(parryEffect, new Vector3(boss.transform.position.x + 0.8f * Mathf.Cos(r), boss.transform.position.y + 0.8f * Mathf.Sin(r), 0), Quaternion.identity);
 
         boss.Damaged( isSuccess );
+    }
+
+    public void BreakQTE(){
+        pQTE.BreakQTE();
+        StartCoroutine(EndQTE_());
     }
 
     public void AfterParry(){
@@ -473,6 +524,7 @@ public class PlayerBehaviour : MonoBehaviour
             zoomed = false;
             boss.SkipQTE();
             playerstate = PlayerState.Idle;
+            animator.SetTrigger("Idle");
         }
     }
 
@@ -493,62 +545,83 @@ public class PlayerBehaviour : MonoBehaviour
     public void PlayerDead(){
         StopAllCoroutines();
         transform.DOKill(false);
+        animator.SetTrigger("Dead");
         playerstate = PlayerState.Dead;
-        //애니메이션 재생
+        sr.DOFade(0,5f).SetEase(Ease.InCubic);
+        StartCoroutine(PlayerDead_());
+    }
+    
+    IEnumerator PlayerDead_(){
+        yield return new WaitForSeconds(2.5f);
+        GameManager.Instance.UIManager.PressRToRestart();
     }
 
     public void AttackProcess(){
         if(attackList.Count != 0){
             if(attackList[0].time < Time.time){
                 Attack a = attackList[0];
-                Debug.Log(a.time); 
                 if(a.attacktype == Attacktype.white){
                     float angle = Vector2.Angle(mouseVec, -a.attackDirection);
                     if((a.startPoint - transform.position).magnitude < a.attackDistance){
                         if (playerstate == PlayerState.Guard && angle < 75) {
-                            DamagedSmall(a.damage / 3, a.attackDirection.normalized);
+                            GameManager.Instance.AudioManager.Play(ST.guard);
+                            DamagedSmall(a.damage / 4, a.attackDirection.normalized);
                             boss.NextPattern(false);
                             GainGuardGauge(0.11f);
                         }
                         else if( DamageAvailiableState() ||  playerstate == PlayerState.Guard){
+                            GameManager.Instance.AudioManager.Play(ST.streak);
                             DamagedBig(a.damage, a.attackDirection.normalized);
                             boss.NextPattern(true);
                         }
-                        else boss.NextPattern(false);
+                        else {
+                            GameManager.Instance.AudioManager.Play(ST.streak);
+                            boss.NextPattern(false);
+                        }
                     }
-                    else boss.NextPattern(false);
+                    else {
+                        GameManager.Instance.AudioManager.Play(ST.streak);
+                        boss.NextPattern(false);
+                    }
                 }
                 else if(a.attacktype == Attacktype.red){
                     if((DamageAvailiableState() || playerstate == PlayerState.Guard) && (a.startPoint - transform.position).magnitude < a.attackDistance ) {
+                        GameManager.Instance.AudioManager.Play(ST.streak);
                         DamagedBig(a.damage, a.attackDirection.normalized);
                         boss.NextPattern(true);
                     }
-                    else boss.NextPattern(false);
+                    else {
+                        GameManager.Instance.AudioManager.Play(ST.streak);
+                        boss.NextPattern(false);
+                    }
                 }   
                 else if(a.attacktype == Attacktype.blue){
                     if(DamageAvailiableState() || playerstate == PlayerState.Guard) {
                     RaycastHit2D hit = Physics2D.Raycast(a.startPoint, a.attackDirection, 100, LayerMask.GetMask("Player"));
                         if(hit.collider != null){
                             GameObject bo = Instantiate(blueObject, boss.transform.position, Quaternion.Euler(0,0,Vector2.SignedAngle(Vector2.down, a.attackDirection)));
-                            bo.transform.DOMove(a.attackDirection.normalized * 50f, 15f).SetRelative().SetSpeedBased().OnComplete(() => {
+                            bo.transform.DOMove((transform.position - boss.transform.position).normalized * 50f, 20f).SetRelative().SetSpeedBased().OnComplete(() => {
                                 Destroy(bo);
                             });
                             DamagedBig(a.damage, a.attackDirection);
+                            GameManager.Instance.AudioManager.Play(ST.kunai);
                             boss.NextPattern(true); 
                         }
                         else{
                             GameObject bo = Instantiate(blueObject, boss.transform.position, Quaternion.Euler(0,0,Vector2.SignedAngle(Vector2.down, a.attackDirection)));
-                            bo.transform.DOMove(a.attackDirection.normalized * 50f, 15f).SetRelative().SetSpeedBased().OnComplete(() => {
+                            bo.transform.DOMove(a.attackDirection.normalized * 50f, 20f).SetRelative().SetSpeedBased().OnComplete(() => {
                                 Destroy(bo);
                             });
+                            GameManager.Instance.AudioManager.Play(ST.kunai);
                             boss.NextPattern(false);
                         }
                     }
                     else{
                         GameObject bo = Instantiate(blueObject, boss.transform.position, Quaternion.Euler(0,0,Vector2.SignedAngle(Vector2.down, a.attackDirection)));
-                        bo.transform.DOMove(a.attackDirection.normalized * 50f, 15f).SetRelative().SetSpeedBased().OnComplete(() => {
+                        bo.transform.DOMove(a.attackDirection.normalized * 50f, 20f).SetRelative().SetSpeedBased().OnComplete(() => {
                             Destroy(bo);
                         });
+                        GameManager.Instance.AudioManager.Play(ST.kunai);
                         boss.NextPattern(false);
                     }
                 }
@@ -560,15 +633,17 @@ public class PlayerBehaviour : MonoBehaviour
 
     // 클린 히트했을때
     public void DamagedBig(int damage, Vector3 vec){
-        animator.SetTrigger("Hit");
         GameManager.Instance.DestructChargeParticles.Invoke();
         playerstate = PlayerState.Damaged;
+        if(vec.x < 0) PlayerXflip(false);
+        else PlayerXflip(true);
         playerHealth -= damage;
         if(playerHealth <= 0 ){
             PlayerDead();
             return;
         }
-        playerRecoveryHealth -= damage/3f;
+        animator.SetTrigger("Hit");
+        playerRecoveryHealth -= damage / 4f;
         lastDamagedTime = Time.time;
         transform.DOKill(false);
         transform.DOMove(transform.position + vec.normalized * knuckbackBig, 1.2f).SetEase(Ease.OutCubic).OnComplete(() => {
@@ -599,7 +674,7 @@ public class PlayerBehaviour : MonoBehaviour
     }
     public void GainGuardGauge(float f){
         guardGauge += f;
-        if(guardGauge > 4) guardGauge = 4;
+        if(guardGauge > 4.1f) guardGauge = 4.1f;
     }
 
     public float GetPlayerHP(){

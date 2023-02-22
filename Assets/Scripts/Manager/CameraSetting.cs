@@ -60,7 +60,8 @@ public class CameraSetting : MonoBehaviour
         else{
             propersize = vpb.y * 2f;
         }
-        cvc.m_Lens.OrthographicSize = propersize;
+        
+        cvc.m_Lens.OrthographicSize = Mathf.Max(propersize, 1.7f);
     }
 
     public void QTEZoomIn(){

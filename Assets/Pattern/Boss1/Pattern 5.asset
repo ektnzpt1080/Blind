@@ -28,4 +28,4 @@ MonoBehaviour:
   - {fileID: 1114791884, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   attackSprites:
   - {fileID: 1266646792, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
-  attackDamage: 0a000000
+  attackDamage: 14000000

@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 1291138483}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.02, y: 0, z: 0}
-  m_LocalScale: {x: 50, y: 50, z: 1}
+  m_LocalScale: {x: 12.5, y: 12.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1479259209791494889}
@@ -128,7 +128,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 1.8627367, y: 0}
+  m_Offset: {x: 1.1635088, y: -0.061078608}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -139,7 +139,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 4.7254734, y: 3.5}
+  m_Size: {x: 2.3663757, y: 1.5644921}
   m_EdgeRadius: 0
 --- !u!1 &1479259209791494895
 GameObject:
@@ -155,6 +155,7 @@ GameObject:
   - component: {fileID: 1203730617}
   - component: {fileID: 1479259209791494900}
   - component: {fileID: 1479259209791494891}
+  - component: {fileID: 1203730618}
   m_Layer: 7
   m_Name: Player
   m_TagString: Untagged
@@ -171,7 +172,7 @@ Transform:
   m_GameObject: {fileID: 1479259209791494895}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3.63, y: 1.37, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1479259208905299879}
@@ -220,7 +221,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 3
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: dbc82a7a9f60d8249ba8d2fb9c8261c3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -248,30 +249,34 @@ MonoBehaviour:
   playerRollTime: 0.25
   playerRollCooltime: 0.8
   staminaRecoveryTime: 0.9
-  staminaRecoverySpeed: 1
+  staminaRecoverySpeed: 0.5
   playerRunningSpeed: 5.2
   playerRunningStaminaSpendingSpeed: 0.35
   playerStaminaMax: 4
-  playerHealth: 1000
+  playerHealth: 0
+  playerMaxHealth: 80
+  playerRecoveryHealth: 0
+  recoverySpeed: 1.9
+  recoveryTime: 5
   knuckbackSmall: 0.25
   knuckbackBig: 1
-  attackDashDistance: 0.8
+  attackDashDistance: 2.3
   border: {x: 14, y: 8}
   QTEDashDistance: 2
   QTEDashTime: 0.8
   zoomMaxTime: 0.8
-  parryableTime: 0
+  parryCoolTime: 0.8
   attackRange: {fileID: 1479259208905299878}
   boss: {fileID: 0}
   parryEffect: {fileID: 6860616751186999244, guid: e783ae18aa568684185317c862deb956, type: 3}
   blueObject: {fileID: 1238222668428875813, guid: e0ce900009b56cd4a801d049576a9f8c, type: 3}
+  chargeAttackComplete: {fileID: 1414410473306815487, guid: df5cd06dc287b3f46b078d3c4751013f, type: 3}
+  chargeAttackEffect: {fileID: 7818352317091169032, guid: 18191a4f90f5a05459279ce2817dfe67, type: 3}
   boFloatDistanceY: 2
   boFloatDistanceX: 3
   boTime: 1.5
   boTime2: 2.5
   playerstate: 0
-  guardGauge: 0
-  attackGauge: 0
 --- !u!114 &1203730617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,7 +329,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 1.2, y: 0.8}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -333,3 +338,23 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!95 &1203730618
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1479259209791494895}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: b1dc174d53b253c4d8b8929ab9e2552e, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0

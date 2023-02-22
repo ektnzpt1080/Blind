@@ -28,6 +28,13 @@ public class PlayerQTE : MonoBehaviour
         pb.EndQTE();
     }
 
+    public void BreakQTE(){
+        if(playingBoard is not null){
+            Destroy(playingBoard.gameObject);
+        }
+        camerasetting.EndZoom();
+    }
+
     public PlayerBehaviour GetPlayerBehaviour(){
         return pb;
     }

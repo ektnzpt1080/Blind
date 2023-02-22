@@ -33,4 +33,4 @@ MonoBehaviour:
   attackSprites:
   - {fileID: 818689801, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   - {fileID: 1951745108, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
-  attackDamage: 0a0000000a000000
+  attackDamage: 0a00000008000000

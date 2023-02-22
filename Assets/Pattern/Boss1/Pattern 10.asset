@@ -44,4 +44,4 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: -1899957545, guid: dbea13e56bdf77746a00f5f98b2b2db5, type: 3}
   - {fileID: 0}
-  attackDamage: 0a0000000a0000000a0000000a000000
+  attackDamage: 1200000000000000120000000f000000

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 using Attacktype = Pattern.AttackType;
+using ST = AudioManager.SoundType;
 using UnityEngine.Events;
+
 
 public class Boss1Behaviour : MonoBehaviour
 {
@@ -11,7 +13,8 @@ public class Boss1Behaviour : MonoBehaviour
         Idle,
         Special,
         QTEEnable,
-        BackStep
+        BackStep,
+        Dead
     }
     
     boss1PatternExtracter b1pe;
@@ -34,24 +37,28 @@ public class Boss1Behaviour : MonoBehaviour
     [SerializeField] float backStepSpeed; // backstep 속도
     [SerializeField] float backStepTime; // backstep 속도
     [SerializeField] int bossHPMax; // backstep 속도
+    [SerializeField] float attackKnuckbackDistance;
+    [SerializeField] float attackKnuckbackTime;
+    
     [SerializeField] GameObject hitEffect; // HitEffect
     [SerializeField] Sprite damageSprite;
     [SerializeField] Sprite guardSprite;
-
+    [SerializeField] Sprite backStepSprite;
+    [SerializeField] Sprite deadSprite;
+    
     bool footprintEnable; //Boss Footprint 출력 여부
     Vector2 footprintDirection; //Footprint 방향
     int bossHP; // Boss HP
-    [SerializeField] int bossStamina; // boss의 스태미나 (QTE)
+    int bossStamina; // boss의 스태미나 (QTE)
     float lastDamaged;
     SpriteRenderer sr; //spriterenderer
     float footprintCoolTimeOriginal;
     GameObject lastSpecialDamagedOne;
 
-    [SerializeField] bool nextPattern; //다음 패턴을 사용
-    [SerializeField] bool playerDamaged; // 플레이어가 데미지를 입음
-
+    bool nextPattern; //다음 패턴을 사용
+    bool playerDamaged; // 플레이어가 데미지를 입음
+    bool PatternDamaged = true; // 패턴이 시작하면 false, 패턴 중 맞으면 true가 되고 패턴을 종료시킴, 후속으로 걷는 패턴 (walk, shortwalk, chase)에서도 true로 만듦
     //for debug
-    bool debugColor;
 
     private void Awake() {
         b1pe = GetComponent<boss1PatternExtracter>();
@@ -63,7 +70,7 @@ public class Boss1Behaviour : MonoBehaviour
         b1pe.patternList.Add(new PatternLink("Pattern4", 4, 1f));
         b1pe.patternList.Add(new PatternLink("Pattern5", 5, true));
         b1pe.patternList.Add(new PatternLink("Pattern7", 7));
-        b1pe.patternList.Add(new PatternLink("Pattern8", 8, false, true));
+        b1pe.patternList.Add(new PatternLink("Pattern8", 8, false));
         b1pe.patternList[2].advanced = (new PatternLink("Pattern9", 9, false, true));
         b1pe.patternList[4].advanced = (new PatternLink("Pattern10", 10, false, true));
         //b1pe.patternList.Add(new PatternLink("Pattern0"));
@@ -75,17 +82,16 @@ public class Boss1Behaviour : MonoBehaviour
     {
         sr = GetComponent<SpriteRenderer>();
         StartCoroutine(FootPrint());
-        footprintEnable = true;
-        debugColor = true;
+        footprintEnable = false;
         bossHP = bossHPMax;
         bossStamina = bossStaminaMax/2;
         lastDamaged = Time.time;
         footprintCoolTimeOriginal = footprintCoolTime;
-        StartCoroutine(Walk());
         nextPattern = false;
         playerDamaged = false;
         alreadyWaiting = false;
         CoroutineAgain = false;
+        StartCoroutine(CeaseAndWalk(2f));
     }
 
     // Update is called once per frame
@@ -185,7 +191,6 @@ public class Boss1Behaviour : MonoBehaviour
             }
         }
     }    
-    [SerializeField] Sprite backStepSprite;
 /*
     IEnumerator BackStep(){
         yield return new WaitForFixedUpdate();
@@ -277,21 +282,18 @@ public class Boss1Behaviour : MonoBehaviour
         Damaged(false, damage);
     }
 
-    //아마 싹 고쳐야 될듯?
-
-    [SerializeField] float attackKnuckbackDistance;
-    //0.7
-    [SerializeField] float attackKnuckbackTime;
-    //0.2
-
     public void Damaged(bool QTEsuccess = false, int damage = 15){
         if(enemystate == EnemyState.Idle){
             bossHP -= damage;
+            if(bossHP <= 0) {
+                BossDead();
+                return;
+            }
             GameObject md = MakeDamagedSprite(false);
             transform.DOMove(VectorBtoP().normalized * -attackKnuckbackDistance, attackKnuckbackTime).SetRelative();
             md.transform.DOMove(VectorBtoP().normalized * -attackKnuckbackDistance, attackKnuckbackTime).SetRelative();
             PatternDamaged = true;
-            StartCoroutine(CeaseAndChase(0.2f));
+            StartCoroutine(CeaseAndChase(0.9f));
         }
         else if(enemystate == EnemyState.QTEEnable){
             enemystate = EnemyState.Special;
@@ -304,6 +306,11 @@ public class Boss1Behaviour : MonoBehaviour
             transform.DOMove(transform.position + -VectorBtoP().normalized * 1.2f, 0.2f);
             if(QTEsuccess) {
                 bossHP -= damage;
+                if(bossHP <= 0){
+                    player.BreakQTE();
+                    BossDead();
+                    return;
+                }
                 GameObject he = Instantiate(hitEffect, lastSpecialDamagedOne.transform);
                 if(VectorBtoP().x > 0){
                     Vector3 temp = he.transform.localScale;
@@ -339,6 +346,8 @@ public class Boss1Behaviour : MonoBehaviour
             StartCoroutine(ParticleDestruct());
             GameManager.Instance.CameraSetting.PreZoomIn();
             player.StartZoom();
+            if(VectorBtoP().x > 0) player.PlayerXflip(true);
+            else player.PlayerXflip(false);
         }
         else if(red){
             if( VectorBtoP().magnitude > 0.5f ){
@@ -352,6 +361,7 @@ public class Boss1Behaviour : MonoBehaviour
     public void EndQTE(){
         transform.DOKill(false);
         lastSpecialDamagedOne.transform.DOMove(transform.position + -VectorBtoP().normalized * 3.1f, 0.4f).SetEase(Ease.OutCubic);
+        if(bossHP <= 0) return;
         transform.DOMove(transform.position + -VectorBtoP().normalized * 3.1f, 0.4f).SetEase(Ease.OutCubic).OnComplete(() =>{
             StartCoroutine(Walk());
         });
@@ -364,15 +374,41 @@ public class Boss1Behaviour : MonoBehaviour
             StartCoroutine(Walk());
         }
     }
+
+    public void BossDead(){
+        StopAllCoroutines();
+        transform.DOKill();
+        GameManager.Instance.DestructAfterimage.Invoke();
+        GameManager.Instance.DestructAttackParticles.Invoke();
+        enemystate = EnemyState.Dead;
+        GameObject ds = MakeDeadSprite();
+        ds.transform.DOMove(transform.position + -VectorBtoP().normalized * 1.5f, 0.4f);
+        
+        
+        // 
+        // 보스 체력바 없애고
+        // 만약 QTE 중이라면 QTE 창 치우고, 카메라 원래대로 돌림
+        // 보스 dead 상태로
+        // 대충 쓰러진 스프라이트 좀 오래 출력하고
+        // 
+        // Thank you for playing 띄우고
+        // 메인메뉴로 돌아가기 띄우고
+        // 
+        // 
+        //
+    }
     
     GameObject MakePreAttackEffect( Attacktype type){
         if(type == Attacktype.white){
+            GameManager.Instance.AudioManager.Play(ST.white);
             return Instantiate(preattackEffectW, transform.position, Quaternion.identity);
         }
         else if(type == Attacktype.red){
+            GameManager.Instance.AudioManager.Play(ST.red);
             return Instantiate(preattackEffectR, transform.position, Quaternion.identity);
         }
         else if(type == Attacktype.blue){
+            GameManager.Instance.AudioManager.Play(ST.blue);
             return Instantiate(preattackEffectB, transform.position, Quaternion.identity);
         }
         else return null;
@@ -404,6 +440,22 @@ public class Boss1Behaviour : MonoBehaviour
             Destroy(dSprite.gameObject);
         });
         return dSprite.gameObject;
+    }
+
+    GameObject MakeDeadSprite(){
+        SpriteRenderer dSprite = Instantiate(afterimage, InsideFenceTransform(transform.position), Quaternion.identity);
+        dSprite.sprite = deadSprite;
+        if(VectorBtoP().x < 0) dSprite.flipX = true;
+        dSprite.GetComponent<SpriteRenderer>().DOFade(0, 5f).SetEase(Ease.InQuint).OnComplete(() => {
+            Destroy(dSprite.gameObject);
+        });
+        StartCoroutine(MakeDeadSprite_());
+        return dSprite.gameObject;
+    }
+
+    IEnumerator MakeDeadSprite_(){
+        yield return new WaitForSeconds(4f);
+        GameManager.Instance.UIManager.ThankYouForPlaying();
     }
 
     Vector3 InsideFenceTransform(Vector3 v){
@@ -464,8 +516,7 @@ public class Boss1Behaviour : MonoBehaviour
         playerDamaged = isPlayerDamaged;
     }
 
-    [SerializeField] bool PatternDamaged = true; // 패턴이 시작하면 false, 패턴 중 맞으면 true가 되고 패턴을 종료시킴, 후속으로 걷는 패턴 (walk, shortwalk, chase)에서도 true로 만듦
-
+    
     // 0 흰-흰-흰 정박
     IEnumerator Pattern0(){
         PatternDamaged = false;

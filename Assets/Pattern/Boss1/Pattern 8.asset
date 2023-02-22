@@ -27,4 +27,4 @@ MonoBehaviour:
   preAttackSprites:
   - {fileID: 736095658, guid: f1ed786ea69c33e4d9c6f4f8d6d31c1b, type: 3}
   attackSprites: []
-  attackDamage: 0a000000
+  attackDamage: 0f000000
