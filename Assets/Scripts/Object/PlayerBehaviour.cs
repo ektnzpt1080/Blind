@@ -150,11 +150,8 @@ public class PlayerBehaviour : MonoBehaviour
         float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
         attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
 
-        if(Input.GetKeyDown(KeyCode.C)) {
-            Time.timeScale = 0;
-        }
-        if(Input.GetKeyDown(KeyCode.V)){
-            Time.timeScale = 1;
+        if(Input.GetKeyDown(KeyCode.Escape)) {
+            Time.timeScale = 1 - Time.timeScale;
         }
 
         //PlayerColor();

@@ -7,7 +7,7 @@ using DG.Tweening;
 public class Select : MonoBehaviour
 {
     public Camera mainCamera;
-    public Transform transformUp, transformDown;
+    public Transform left, right;
     public SpriteRenderer black;
     int select;
     // Update is called once per frame
@@ -20,13 +20,13 @@ public class Select : MonoBehaviour
     {
         if(selectable){
             Vector3 f = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-            if(transformUp.position.y < f.y) select = 0; //start
-            else if(transformDown.position.y > f.y) select = 2; //exit
+            if(left.position.x > f.x) select = 0; //start
+            else if(right.position.x < f.x) select = 2; //exit
             else select = 1; //how to play
 
-            if( select == 0 ) transform.position = new Vector3(5f,2.5f,0f);
-            else if( select == 1 ) transform.position = new Vector3(5f,0f,0f);
-            else if( select == 2 ) transform.position = new Vector3(5f,-2.5f,0f);
+            if( select == 0 ) transform.position = new Vector3(-5.5f,-3f,0f);
+            else if( select == 1 ) transform.position = new Vector3(0f,-3f,0f);
+            else if( select == 2 ) transform.position = new Vector3(5.5f,-3f,0f);
 
             if(Input.GetMouseButtonDown(0)){
                 if(select == 0){
