@@ -2342,7 +2342,7 @@ PrefabInstance:
       objectReference: {fileID: 21300000, guid: dd8f55b7239da9f49a1a62916045dc4e, type: 3}
     - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: bossStaminaMax
-      value: 100
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 5982467590878833619, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: walkToPatternTime
@@ -2359,6 +2359,10 @@ PrefabInstance:
     - target: {fileID: 5982467590878833631, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
       propertyPath: m_Name
       value: Boss1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5982467590878833631, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9d07644e32987e243b3b0fb73bed5c2c, type: 3}

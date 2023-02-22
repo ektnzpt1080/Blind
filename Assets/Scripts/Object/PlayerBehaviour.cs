@@ -95,7 +95,7 @@ public class PlayerBehaviour : MonoBehaviour
         animator = GetComponent<Animator>();
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
         playerstate = PlayerState.Idle;
-        guardGauge = 1.01f;
+        guardGauge = 4f;
         lastRollTime = Time.time;
         lastParryTime = Time.time;
         playerHealth = playerMaxHealth;
@@ -146,7 +146,7 @@ public class PlayerBehaviour : MonoBehaviour
         float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
         attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
 
-        PlayerColor();
+        //PlayerColor();
     }
 
 
@@ -174,7 +174,6 @@ public class PlayerBehaviour : MonoBehaviour
             GameManager.Instance.DestructChargeParticles.Invoke();
             if(guardGauge > 1f && attackGauge > 1f) {
                 guardGauge -= 1;
-                playerstate = PlayerState.Idle;
                 AttackDash();
             } 
             else if(playerstate == PlayerState.Attack) {
@@ -240,7 +239,6 @@ public class PlayerBehaviour : MonoBehaviour
         {
             if(moveDirection.x != 0 || moveDirection.y != 0) animator.SetBool("Move", true);
             else animator.SetBool("Move", false);
-            
             transform.Translate(V2toV3(moveDirection).normalized * playerMoveSpeed * Time.deltaTime);
             
         }
@@ -255,9 +253,17 @@ public class PlayerBehaviour : MonoBehaviour
 
     public void Attack(){
         if(playerstate == PlayerState.OnlyAttack && Vector2.Angle(boss.transform.position - transform.position, mouseVec) < 75){
+            animator.SetTrigger("Attack");
             boss.Damaged(25);
+            if(playerstate != PlayerState.QTE){
+                transform.DOKill(false);
+                transform.DOMove(transform.position + V2toV3(mouseVec).normalized * 0.5f, 0.2f).OnComplete(() => {
+                    animator.SetTrigger("Idle");
+                });
+            }
         }
         else if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
+            animator.SetTrigger("BlueGuard");
             attackList.RemoveAt(0);
             boss.NextPattern(false);
             GainGuardGauge(0.37f);
@@ -265,6 +271,7 @@ public class PlayerBehaviour : MonoBehaviour
             InstantiateBlueObject2(transform.position + V2toV3(mouseVec).normalized * 0.4f, -mouseVec);
         }
         else if(AttackAvailiableState()) {
+            animator.SetTrigger("AttackReady");
             playerstate = PlayerState.Attack;
             if(guardGauge > 1f) Instantiate(chargeAttackEffect, this.transform);
         }
@@ -272,6 +279,7 @@ public class PlayerBehaviour : MonoBehaviour
 
     //공격할 때 나오는 대시
     public void AttackDash(){
+        animator.SetTrigger("Attack");
         ContactFilter2D cf2d = new ContactFilter2D();
         cf2d.SetLayerMask(LayerMask.GetMask("Boss"));
         List<Collider2D> res = new List<Collider2D>(); 
@@ -290,6 +298,7 @@ public class PlayerBehaviour : MonoBehaviour
     
     IEnumerator Rolling(Vector2 v)
     {
+        animator.SetTrigger("Roll");
         rollDirection = v;
         lastRollTime = Time.time;
         lastStaminaSpendTime = Time.time;
@@ -303,6 +312,7 @@ public class PlayerBehaviour : MonoBehaviour
         if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.red){
             Attack a = attackList[0];
             if(Vector2.Angle(-attackList[0].attackDirection, v) < 75) {
+                animator.SetTrigger("SpecialAttack");
                 attackList.RemoveAt(0);
                 boss.NextPattern(false);
                 boss.StaminaDamaged(30, true);
@@ -311,16 +321,18 @@ public class PlayerBehaviour : MonoBehaviour
                 yield break;
             }
         }
+
         for(int i = 0 ; i < playerRollTime / Time.deltaTime / 2; i++){
             transform.Translate(V2toV3(v).normalized * playerRollSpeed * Time.deltaTime);
             yield return new WaitForFixedUpdate();
         }
 
         if(playerstate == PlayerState.Roll){
+            animator.SetTrigger("Idle");
             if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.Space)) playerstate = PlayerState.Running;
             else {
                 playerstate = PlayerState.Idle;
-                animator.SetTrigger("Idle");
+                
             }
         }
         rollDirection = Vector2.zero;
@@ -386,14 +398,19 @@ public class PlayerBehaviour : MonoBehaviour
         playerstate = PlayerState.OnlyAttack;
     }
 
+    int lastmove;
     public void StartQTE(int num = -1){
         zoomed = false;
         playerstate = PlayerState.QTE;
         int attacknum = num;
         if(attacknum < 0 ) attacknum = Random.Range(7,9);
         
+        transform.DOKill(false);
         boss.transform.position = Vector3.zero + (boss.transform.position - transform.position).normalized * 2.0f;
         transform.position = Vector3.zero;
+        transform.DOMove((boss.transform.position - transform.position).normalized * 4.0f, QTEDashTime).SetEase(Ease.OutQuint).SetRelative();
+        lastmove = 2;
+
         pQTE.StartQTE(attacknum);
     }
 
@@ -409,6 +426,16 @@ public class PlayerBehaviour : MonoBehaviour
     }
 
     public void QTEDash(bool firstcall, bool isSuccess){
+        int i;
+        do {
+            i = Random.Range(0,3);
+        } while (lastmove == i) ;
+        
+        if(i == 0) animator.SetTrigger("SP1");
+        else if(i == 1) animator.SetTrigger("SP2");
+        else if(i == 2) animator.SetTrigger("SP3");
+        lastmove = i;
+        
         if(firstcall) QTEStartpoint = transform.position;
         Vector3 d = (boss.transform.position - QTEStartpoint).normalized * QTEDashDistance;
         float delta = Random.Range(-60f, 60f) * Mathf.Deg2Rad;
@@ -446,7 +473,6 @@ public class PlayerBehaviour : MonoBehaviour
             zoomed = false;
             boss.SkipQTE();
             playerstate = PlayerState.Idle;
-            animator.SetTrigger("Idle");
         }
     }
 
