@@ -3312,8 +3312,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uAE30\uBCF8 \uC870\uC791\n\nWASD : \uC774\uB3D9\n\n\uC67C\uD074\uB9AD
-    : \uACF5\uACA9 \n\n\uC6B0\uD074\uB9AD : \uBC29\uC5B4\n\nShift or SpaceBar : \uAD6C\uB974\uAE30\n"
+  m_text: "\uAE30\uBCF8 \uC870\uC791\n\n \uC774\uB3D9  : WASD\n\n \uACF5\uACA9  :
+    \uC67C\uD074\uB9AD\uC744 \uD640\uB4DC\uD588\uB2E4\uAC00 \uB5BC\uAE30\n\n \uBC29\uC5B4 
+    : \uC6B0\uD074\uB9AD\n\n\uAD6C\uB974\uAE30 : Shift or SpaceBar\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 097df3e9b9d43ca49b3a5682d755c1c7, type: 2}
   m_sharedMaterial: {fileID: -6289366698507798737, guid: 097df3e9b9d43ca49b3a5682d755c1c7, type: 2}
