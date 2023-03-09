@@ -78,6 +78,7 @@ public class PlayerBehaviour : MonoBehaviour
     float guardGauge;
     float attackGauge;
     bool chargeComplete = false;
+    bool paused = false;
 
     Camera mainCamera;
     SpriteRenderer sr;
@@ -108,6 +109,7 @@ public class PlayerBehaviour : MonoBehaviour
         attackCollider = attackRange.GetComponent<Collider2D>();
         attackList = new List<Attack>();
         chargeComplete = false;
+        paused = false;
 
     }
 
@@ -115,43 +117,47 @@ public class PlayerBehaviour : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //움직임, 공격, 방어 등등
-        PlayerControl();
-        PlayerXflip();
-        //패링 회복 관련
-        if (!parryable)
-        {
-            if (lastParryTime + parryCoolTime < Time.time) ParryNormalize();
-        }
-
-        //스태미나 관련
-        if (playerStamina < playerStaminaMax)
-        {
-            if (lastStaminaSpendTime + staminaRecoveryTime < Time.time){
-                playerStamina += staminaRecoverySpeed * Time.deltaTime;
+        if(!paused){
+            //움직임, 공격, 방어 등등
+            PlayerControl();
+            PlayerXflip();
+            //패링 회복 관련
+            if (!parryable)
+            {
+                if (lastParryTime + parryCoolTime < Time.time) ParryNormalize();
             }
-        }
-        //border밖으로 못나가게
-        float x = Mathf.Clamp(transform.position.x, -border.x, border.x);
-        float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
-        transform.position = new Vector3(x,y,0);
 
-        //공격 판정
-        AttackProcess();
+            //스태미나 관련
+            if (playerStamina < playerStaminaMax)
+            {
+                if (lastStaminaSpendTime + staminaRecoveryTime < Time.time){
+                    playerStamina += staminaRecoverySpeed * Time.deltaTime;
+                }
+            }
+            //border밖으로 못나가게
+            float x = Mathf.Clamp(transform.position.x, -border.x, border.x);
+            float y = Mathf.Clamp(transform.position.y, -border.y, border.y);
+            transform.position = new Vector3(x,y,0);
+
+            //공격 판정
+            AttackProcess();
+            
+            //줌 끝날때
+            if(zoomed && zoomedTime + zoomMaxTime < Time.time) {
+                EndZoom();
+                playerstate = PlayerState.Idle;
+                animator.SetTrigger("Idle");
+            }
+
+            mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+            float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
+            attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
+        }
         
-        //줌 끝날때
-        if(zoomed && zoomedTime + zoomMaxTime < Time.time) {
-            EndZoom();
-            playerstate = PlayerState.Idle;
-            animator.SetTrigger("Idle");
-        }
-
-        mouseVec = mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-        float angle = Vector2.SignedAngle(Vector2.right, mouseVec);
-        attackRange.transform.rotation = Quaternion.Euler(0,0,angle);
-
+        //시간 되면 gamemanager쪽으로 옮길것
         if(Input.GetKeyDown(KeyCode.Escape)) {
             Time.timeScale = 1 - Time.timeScale;
+            paused = !paused;
         }
 
         //PlayerColor();
@@ -182,6 +188,7 @@ public class PlayerBehaviour : MonoBehaviour
         if(Input.GetMouseButtonUp(0)){
             if(guardGauge > 1f && attackGauge > 1f) {
                 guardGauge -= 1;
+                attackGauge = 0;
                 AttackDash();
             } 
             else if(playerstate == PlayerState.Attack) {
@@ -299,7 +306,7 @@ public class PlayerBehaviour : MonoBehaviour
                 });
             }
         }
-        else if(attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
+        else if(AttackAvailiableState() && attackList.Count > 0 && attackList[0].attacktype == Attacktype.blue && Vector2.Angle(attackList[0].attackDirection, -mouseVec) < 75){
             GameManager.Instance.AudioManager.Play(ST.parrying);
             animator.SetTrigger("BlueGuard");
             attackList.RemoveAt(0);
