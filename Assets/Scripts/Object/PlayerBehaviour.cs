@@ -194,12 +194,14 @@ public class PlayerBehaviour : MonoBehaviour
         {
             if (playerstate == PlayerState.Idle)
             {
-                animator.SetTrigger("Guard");
                 playerstate = PlayerState.Guard;
                 if(parryable){
                     lastParryTime = Time.time;
                     parryable = false;
                     Parrying();
+                }
+                else{
+                    animator.SetTrigger("Guard");
                 }
             }
         }
