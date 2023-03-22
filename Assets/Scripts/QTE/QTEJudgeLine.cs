@@ -16,7 +16,7 @@ public class QTEJudgeLine : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        transform.Translate(Vector3.right * speed * Time.deltaTime);
+        rectTransform.localPosition += Vector3.right * speed * Time.deltaTime;
         if(x_fade > -1000f) AlphaColor( Mathf.Lerp(1f, 0f, (rectTransform.anchoredPosition.x - x_fade) / (x_last - x_fade)));
     }
 
